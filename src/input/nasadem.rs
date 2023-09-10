@@ -1,23 +1,33 @@
 //! NASADEM evelation (`.hgt`) file format.
+//!
+//! https://dwtkns.com/srtm30m
+//! https://www.researchgate.net/profile/Pierre-Boulanger-4/publication/228924813/figure/fig8/AS:300852653903880@1448740270695/Description-of-a-HGT-file-structure-The-name-file-in-this-case-is-N20W100HGT.png
 
 use crate::error::HError;
 use byteorder::{LittleEndian as LE, ReadBytesExt};
 use geo_types::{Coord, Polygon};
 use std::{fs::File, io::ErrorKind, path::Path};
 
-/// https://www.researchgate.net/profile/Pierre-Boulanger-4/publication/228924813/figure/fig8/AS:300852653903880@1448740270695/Description-of-a-HGT-file-structure-The-name-file-in-this-case-is-N20W100HGT.png
-pub struct Hgt {
+pub struct Tile {
     /// Southwest corner of the tile.
-    sw_corner: Coord,
+    sw_corner: Coord<i32>,
+
     /// Arcseconds per sample.
-    cell_size: u8,
+    resolution: u8,
+
+    /// Number of (rows, columns) in this tile.
+    dimensions: (usize, usize),
+
     /// Elevation samples.
     samples: Vec<i16>,
 }
 
-impl Hgt {
+impl Tile {
     /// Returnes Self parsed from the file at `path`.
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, HError> {
+        let sw_corner = parse_sw_corner(&path)?;
+
+        let (resolution, dimensions) = extract_resolution(&path)?;
         let mut file = File::open(path)?;
         let mut samples = Vec::new();
 
@@ -25,17 +35,21 @@ impl Hgt {
             match file.read_i16::<LE>() {
                 Ok(sample) => samples.push(sample),
                 Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
-                Err(e) => return Err(HError::Io(e)),
+                Err(e) => Err(e)?,
             };
         }
 
-        let sw_corner = Coord { x: 0., y: 0. };
-        let cell_size = 3;
         Ok(Self {
             sw_corner,
-            cell_size,
+            resolution,
+            dimensions,
             samples,
         })
+    }
+
+    /// Rreturns this tile's resolution in arcseconds per sample.
+    pub fn resolution(&self) -> u8 {
+        self.resolution
     }
 
     /// Returns the sample at `[x, y]`.
@@ -53,8 +67,8 @@ impl Hgt {
     }
 
     /// Returns and iterator over `self`'s grid squares.
-    pub fn iter(&self) -> impl Iterator<Item = GridSquare<'_>> + '_ {
-        (0..self.samples.len()).map(|index| GridSquare {
+    pub fn iter(&self) -> impl Iterator<Item = Sample<'_>> + '_ {
+        (0..self.samples.len()).map(|index| Sample {
             parent: self,
             index,
         })
@@ -62,15 +76,15 @@ impl Hgt {
 }
 
 /// A NASADEM elevation sample.
-pub struct GridSquare<'a> {
+pub struct Sample<'a> {
     /// The parent [Hgt] this grid square belongs to.
-    parent: &'a Hgt,
+    parent: &'a Tile,
     /// Index into parent's evelation data corresponding to tbhis grid
     /// square.
     index: usize,
 }
 
-impl<'a> GridSquare<'a> {
+impl<'a> Sample<'a> {
     pub fn elevation(&self) -> i16 {
         self.parent.samples[self.index]
     }
@@ -80,27 +94,59 @@ impl<'a> GridSquare<'a> {
     }
 }
 
-fn get_lat_long<P: AsRef<Path>>(path: P) -> Result<(i32, i32), Error> {
-    let stem = path.as_ref().file_stem().ok_or(Error::ParseLatLong)?;
-    let desc = stem.to_str().ok_or(Error::ParseLatLong)?;
-    if desc.len() != 7 {
-        return Err(Error::ParseLatLong);
+fn extract_resolution<P: AsRef<Path>>(path: P) -> Result<(u8, (usize, usize)), HError> {
+    const RES_1_ARCSECONDS_FILE_LEN: u64 = 3601 * 3601 * std::mem::size_of::<u16>() as u64;
+    const RES_3_ARCSECONDS_FILE_LEN: u64 = 1201 * 1201 * std::mem::size_of::<u16>() as u64;
+    match path.as_ref().metadata().map(|m| m.len())? {
+        RES_1_ARCSECONDS_FILE_LEN => Ok((1, (3601, 3601))),
+        RES_3_ARCSECONDS_FILE_LEN => Ok((3, (1201, 1201))),
+        invalid_len => Err(HError::HgtLen(invalid_len)),
     }
-
-    let get_char = |n| desc.chars().nth(n).ok_or(Error::ParseLatLong);
-    let lat_sign = if get_char(0)? == 'N' { 1 } else { -1 };
-    let lat: i32 = desc[1..3].parse().map_err(|_| Error::ParseLatLong)?;
-
-    let lng_sign = if get_char(3)? == 'E' { 1 } else { -1 };
-    let lng: i32 = desc[4..7].parse().map_err(|_| Error::ParseLatLong)?;
-    Ok((lat_sign * lat, lng_sign * lng))
 }
 
-fn get_resolution<P: AsRef<Path>>(path: P) -> Option<Resolution> {
-    let from_metadata = |m: fs::Metadata| match m.len() {
-        25934402 => Some(Resolution::SRTM1),
-        2884802 => Some(Resolution::SRTM3),
-        _ => None,
+fn parse_sw_corner<P: AsRef<Path>>(path: P) -> Result<Coord<i32>, HError> {
+    let mk_err = || HError::HgtName(path.as_ref().to_owned());
+    let name = path
+        .as_ref()
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(mk_err)?;
+    if name.len() != 7 {
+        return Err(mk_err());
+    }
+    let lat_sign = match &name[0..1] {
+        "N" => 1,
+        "S" => -1,
+        _ => return Err(mk_err()),
     };
-    fs::metadata(path).ok().and_then(from_metadata)
+    let lat: i32 = lat_sign * name[1..3].parse::<i32>().map_err(|_| mk_err())?;
+    let lon_sign = match &name[3..4] {
+        "E" => 1,
+        "W" => -1,
+        _ => return Err(mk_err()),
+    };
+    let lon: i32 = lon_sign * name[4..7].parse::<i32>().map_err(|_| mk_err())?;
+    Ok(Coord { x: lon, y: lat })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn one_arcsecond_dir() -> PathBuf {
+        [env!("CARGO_MANIFEST_DIR"), "data", "nasadem", "1arcsecond"]
+            .iter()
+            .collect()
+    }
+
+    #[test]
+    fn test_parse_hgt_name() {
+        let mut path = one_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let sw_corner = parse_sw_corner(&path).unwrap();
+        let resolution = extract_resolution(&path).unwrap();
+        assert_eq!(sw_corner, Coord { x: -72, y: 44 });
+        assert_eq!(resolution, (1, (3601, 3601)));
+    }
 }
