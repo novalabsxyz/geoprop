@@ -17,7 +17,7 @@ pub struct Tile {
     /// Southwest corner of the tile.
     ///
     /// Specificlly, the _center_ of the SW most sample of the tile.
-    sw_corner: Coord<i16>,
+    sw_corner: Coord<f64>,
 
     /// Northeast corner of the tile.
     ///
@@ -38,11 +38,17 @@ impl Tile {
     /// Returnes Self parsed from the file at `path`.
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, HError> {
         let (resolution, dimensions) = extract_resolution(&path)?;
-        let sw_corner = parse_sw_corner(&path)?;
+        let sw_corner = {
+            let Coord { x, y } = parse_sw_corner(&path)?;
+            Coord {
+                x: x as f64,
+                y: y as f64,
+            }
+        };
 
         let ne_corner = Coord {
-            y: sw_corner.y as f64 + (dimensions.0 as f64 * resolution as f64) / 3600.0,
-            x: sw_corner.x as f64 + (dimensions.1 as f64 * resolution as f64) / 3600.0,
+            y: sw_corner.y + (dimensions.0 as f64 * resolution as f64) / 3600.0,
+            x: sw_corner.x + (dimensions.1 as f64 * resolution as f64) / 3600.0,
         };
 
         let mut file = BufReader::new(File::open(path)?);
@@ -97,7 +103,7 @@ impl Tile {
         unimplemented!()
     }
 
-    pub fn poly_at_idx(&self, idx: usize) -> Polygon<f64> {
+    pub fn poly_at_idx(&self, _idx: usize) -> Polygon<f64> {
         unimplemented!()
     }
 
@@ -116,8 +122,8 @@ impl Tile {
         //       Mt. Washington test.
         let sample_center_compensation = 1. / (c * 2.);
         let cc = sample_center_compensation;
-        let x = ((coord.x - (self.sw_corner.x as f64 - cc)) * c) as usize;
-        let y = ((coord.y - (self.sw_corner.y as f64 - cc)) * c) as usize;
+        let x = ((coord.x - self.sw_corner.x + cc) * c) as usize;
+        let y = ((coord.y - self.sw_corner.y + cc) * c) as usize;
         (x, y)
     }
 }
@@ -253,8 +259,6 @@ mod tests {
             x: -71.30325,
         };
         let mt_washington_xy = tile.coord_to_xy(mt_washington);
-        let mt_washington_elev = tile[(mt_washington_xy)];
-        let (max_idx, max_elev) = tile.max_elev();
         assert_eq!((mt_washington_xy, tile[mt_washington]), tile.max_elev());
     }
 }
