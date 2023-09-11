@@ -6,11 +6,15 @@
 use crate::error::HError;
 use byteorder::{LittleEndian as LE, ReadBytesExt};
 use geo_types::{Coord, Polygon};
-use std::{fs::File, io::ErrorKind, path::Path};
+use std::{
+    fs::File,
+    io::{BufReader, Seek, SeekFrom},
+    path::Path,
+};
 
 pub struct Tile {
     /// Southwest corner of the tile.
-    sw_corner: Coord<i32>,
+    sw_corner: Coord<i16>,
 
     /// Arcseconds per sample.
     resolution: u8,
@@ -19,7 +23,7 @@ pub struct Tile {
     dimensions: (usize, usize),
 
     /// Elevation samples.
-    samples: Vec<i16>,
+    samples: Box<[i16]>,
 }
 
 impl Tile {
@@ -28,16 +32,23 @@ impl Tile {
         let sw_corner = parse_sw_corner(&path)?;
 
         let (resolution, dimensions) = extract_resolution(&path)?;
-        let mut file = File::open(path)?;
-        let mut samples = Vec::new();
+        let mut file = BufReader::new(File::open(path)?);
 
-        loop {
-            match file.read_i16::<LE>() {
-                Ok(sample) => samples.push(sample),
-                Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
-                Err(e) => Err(e)?,
-            };
-        }
+        let samples = {
+            let mut samples = Vec::new();
+
+            for row in 0..dimensions.1 {
+                file.seek(SeekFrom::End(
+                    -((((row + 1) * dimensions.0) * std::mem::size_of::<i16>()) as i64),
+                ))?;
+                for _col in 0..dimensions.0 {
+                    let sample = file.read_i16::<LE>()?;
+                    samples.push(sample);
+                }
+            }
+            assert_eq!(samples.len(), dimensions.0 * dimensions.1);
+            samples.into_boxed_slice()
+        };
 
         Ok(Self {
             sw_corner,
@@ -75,6 +86,22 @@ impl Tile {
     }
 }
 
+impl std::ops::Index<Coord<f64>> for Tile {
+    type Output = i16;
+
+    fn index(&self, _coord: Coord<f64>) -> &Self::Output {
+        unimplemented!()
+    }
+}
+
+impl std::ops::Index<(usize, usize)> for Tile {
+    type Output = i16;
+
+    fn index(&self, _idx: (usize, usize)) -> &Self::Output {
+        unimplemented!()
+    }
+}
+
 /// A NASADEM elevation sample.
 pub struct Sample<'a> {
     /// The parent [Hgt] this grid square belongs to.
@@ -104,7 +131,7 @@ fn extract_resolution<P: AsRef<Path>>(path: P) -> Result<(u8, (usize, usize)), H
     }
 }
 
-fn parse_sw_corner<P: AsRef<Path>>(path: P) -> Result<Coord<i32>, HError> {
+fn parse_sw_corner<P: AsRef<Path>>(path: P) -> Result<Coord<i16>, HError> {
     let mk_err = || HError::HgtName(path.as_ref().to_owned());
     let name = path
         .as_ref()
@@ -119,13 +146,13 @@ fn parse_sw_corner<P: AsRef<Path>>(path: P) -> Result<Coord<i32>, HError> {
         "S" => -1,
         _ => return Err(mk_err()),
     };
-    let lat: i32 = lat_sign * name[1..3].parse::<i32>().map_err(|_| mk_err())?;
+    let lat = lat_sign * name[1..3].parse::<i16>().map_err(|_| mk_err())?;
     let lon_sign = match &name[3..4] {
         "E" => 1,
         "W" => -1,
         _ => return Err(mk_err()),
     };
-    let lon: i32 = lon_sign * name[4..7].parse::<i32>().map_err(|_| mk_err())?;
+    let lon = lon_sign * name[4..7].parse::<i16>().map_err(|_| mk_err())?;
     Ok(Coord { x: lon, y: lat })
 }
 
@@ -148,5 +175,12 @@ mod tests {
         let resolution = extract_resolution(&path).unwrap();
         assert_eq!(sw_corner, Coord { x: -72, y: 44 });
         assert_eq!(resolution, (1, (3601, 3601)));
+    }
+
+    #[test]
+    fn test_tile_open() {
+        let mut path = one_arcsecond_dir();
+        path.push("N44W072.hgt");
+        Tile::open(path).unwrap();
     }
 }
