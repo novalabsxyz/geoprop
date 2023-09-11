@@ -9,6 +9,7 @@
 use crate::error::HError;
 use byteorder::{BigEndian as BE, ReadBytesExt};
 use geo_types::{Coord, Polygon};
+use memmap2::Mmap;
 use std::{
     fs::File,
     io::{BufReader, Seek, SeekFrom},
@@ -33,7 +34,12 @@ pub struct Tile {
     dimensions: (usize, usize),
 
     /// Elevation samples.
-    samples: Box<[i16]>,
+    samples: Storage,
+}
+
+enum Storage {
+    Parsed(Box<[i16]>),
+    Mapped(Mmap),
 }
 
 impl Tile {
@@ -68,7 +74,7 @@ impl Tile {
                 }
             }
             assert_eq!(samples.len(), dimensions.0 * dimensions.1);
-            samples.into_boxed_slice()
+            Storage::Parsed(samples.into_boxed_slice())
         };
 
         Ok(Self {
@@ -81,7 +87,10 @@ impl Tile {
     }
 
     pub fn max_elev(&self) -> i16 {
-        *self.samples.iter().max().unwrap()
+        match &self.samples {
+            Storage::Parsed(samples) => *samples.iter().max().unwrap(),
+            Storage::Mapped(_raw) => unimplemented!(),
+        }
     }
 
     /// Rreturns this tile's resolution in arcseconds per sample.
@@ -100,7 +109,7 @@ impl Tile {
 
     /// Returns and iterator over `self`'s grid squares.
     pub fn iter(&self) -> impl Iterator<Item = Sample<'_>> + '_ {
-        (0..self.samples.len()).map(|index| Sample {
+        (0..(self.dimensions.0 * self.dimensions.1)).map(|index| Sample {
             parent: self,
             index,
         })
@@ -142,7 +151,10 @@ impl std::ops::Index<(usize, usize)> for Tile {
 
     /// Index by (x, y) where (0, 0) is the SW-most corner of the Tile.
     fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
-        self.samples.index(self._2d_to_1d((x, y)))
+        match &self.samples {
+            Storage::Parsed(samples) => samples.index(self._2d_to_1d((x, y))),
+            Storage::Mapped(_raw) => unimplemented!(),
+        }
     }
 }
 
@@ -157,7 +169,10 @@ pub struct Sample<'a> {
 
 impl<'a> Sample<'a> {
     pub fn elevation(&self) -> i16 {
-        self.parent.samples[self.index]
+        match &self.parent.samples {
+            Storage::Parsed(samples) => samples[self.index],
+            Storage::Mapped(_raw) => unimplemented!(),
+        }
     }
 
     pub fn polygon(&self) -> Polygon {
