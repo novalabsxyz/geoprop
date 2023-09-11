@@ -2,9 +2,10 @@
 //!
 //! https://dwtkns.com/srtm30m
 //! https://www.researchgate.net/profile/Pierre-Boulanger-4/publication/228924813/figure/fig8/AS:300852653903880@1448740270695/Description-of-a-HGT-file-structure-The-name-file-in-this-case-is-N20W100HGT.png
+//! http://fileformats.archiveteam.org/wiki/HGT
 
 use crate::error::HError;
-use byteorder::{LittleEndian as LE, ReadBytesExt};
+use byteorder::{BigEndian as BE, ReadBytesExt};
 use geo_types::{Coord, Polygon};
 use std::{
     fs::File,
@@ -14,6 +15,8 @@ use std::{
 
 pub struct Tile {
     /// Southwest corner of the tile.
+    ///
+    /// Specificlly, the _center_ of the SW most sample of the tile.
     sw_corner: Coord<i16>,
 
     /// Arcseconds per sample.
@@ -42,7 +45,7 @@ impl Tile {
                     -((((row + 1) * dimensions.0) * std::mem::size_of::<i16>()) as i64),
                 ))?;
                 for _col in 0..dimensions.0 {
-                    let sample = file.read_i16::<LE>()?;
+                    let sample = file.read_i16::<BE>()?;
                     samples.push(sample);
                 }
             }
@@ -61,11 +64,6 @@ impl Tile {
     /// Rreturns this tile's resolution in arcseconds per sample.
     pub fn resolution(&self) -> u8 {
         self.resolution
-    }
-
-    /// Returns the sample at `[x, y]`.
-    pub fn sample_at_idx(&self, _x: usize, _y: usize) -> i16 {
-        unimplemented!()
     }
 
     /// Returns the sample at the given geo coordinates.
@@ -97,8 +95,9 @@ impl std::ops::Index<Coord<f64>> for Tile {
 impl std::ops::Index<(usize, usize)> for Tile {
     type Output = i16;
 
-    fn index(&self, _idx: (usize, usize)) -> &Self::Output {
-        unimplemented!()
+    /// Index by (x, y) where (0,0) is the SW-most corner of the Tile.
+    fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
+        self.samples.index(self.dimensions.0 * y + x)
     }
 }
 
@@ -122,11 +121,11 @@ impl<'a> Sample<'a> {
 }
 
 fn extract_resolution<P: AsRef<Path>>(path: P) -> Result<(u8, (usize, usize)), HError> {
-    const RES_1_ARCSECONDS_FILE_LEN: u64 = 3601 * 3601 * std::mem::size_of::<u16>() as u64;
-    const RES_3_ARCSECONDS_FILE_LEN: u64 = 1201 * 1201 * std::mem::size_of::<u16>() as u64;
+    const RES_1_ARCSECONDS_FIBE_BEN: u64 = 3601 * 3601 * std::mem::size_of::<u16>() as u64;
+    const RES_3_ARCSECONDS_FIBE_BEN: u64 = 1201 * 1201 * std::mem::size_of::<u16>() as u64;
     match path.as_ref().metadata().map(|m| m.len())? {
-        RES_1_ARCSECONDS_FILE_LEN => Ok((1, (3601, 3601))),
-        RES_3_ARCSECONDS_FILE_LEN => Ok((3, (1201, 1201))),
+        RES_1_ARCSECONDS_FIBE_BEN => Ok((1, (3601, 3601))),
+        RES_3_ARCSECONDS_FIBE_BEN => Ok((3, (1201, 1201))),
         invalid_len => Err(HError::HgtLen(invalid_len)),
     }
 }
@@ -182,5 +181,27 @@ mod tests {
         let mut path = one_arcsecond_dir();
         path.push("N44W072.hgt");
         Tile::open(path).unwrap();
+    }
+
+    #[test]
+    fn test_tile_index() {
+        let mut path = one_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let tile = Tile::open(&path).unwrap();
+        let raw_file_samples = {
+            let mut file_data = Vec::new();
+            let mut file = BufReader::new(File::open(path).unwrap());
+            while let Ok(sample) = file.read_i16::<BE>() {
+                file_data.push(sample);
+            }
+            file_data
+        };
+        let mut idx = 0;
+        for row in (0..3601).rev() {
+            for col in 0..3601 {
+                assert_eq!(raw_file_samples[idx], tile[(col, row)]);
+                idx += 1;
+            }
+        }
     }
 }
