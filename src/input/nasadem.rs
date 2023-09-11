@@ -72,8 +72,19 @@ impl Tile {
         })
     }
 
-    pub fn max_elev(&self) -> i16 {
-        *self.samples.iter().max().unwrap()
+    pub fn max_elev(&self) -> ((usize, usize), i16) {
+        let mut max_elev = i16::MIN;
+        let mut max_idx = (0, 0);
+        for x in 0..self.dimensions.0 {
+            for y in 0..self.dimensions.1 {
+                let elev = self[(x, y)];
+                if elev > max_elev {
+                    max_elev = elev;
+                    max_idx = (x, y);
+                }
+            }
+        }
+        (max_idx, max_elev)
     }
 
     /// Rreturns this tile's resolution in arcseconds per sample.
@@ -97,16 +108,25 @@ impl Tile {
             index,
         })
     }
+
+    pub fn coord_to_xy(&self, coord: Coord<f64>) -> (usize, usize) {
+        let c = 3600.0 / self.resolution as f64;
+        // TODO: do we need to compensate for cell width. If so, does
+        //       the following accomplish that? It seems to in the
+        //       Mt. Washington test.
+        let sample_center_compensation = 1. / (c * 2.);
+        let cc = sample_center_compensation;
+        let x = ((coord.x - (self.sw_corner.x as f64 - cc)) * c) as usize;
+        let y = ((coord.y - (self.sw_corner.y as f64 - cc)) * c) as usize;
+        (x, y)
+    }
 }
 
 impl std::ops::Index<Coord<f64>> for Tile {
     type Output = i16;
 
     fn index(&self, coord: Coord<f64>) -> &Self::Output {
-        let c = 3600.0 / self.resolution as f64;
-        let x = ((coord.x - (self.sw_corner.x as f64)) * c) as usize;
-        let y = ((coord.y - (self.sw_corner.y as f64)) * c) as usize;
-        &self[(x, y)]
+        &self[self.coord_to_xy(coord)]
     }
 }
 
@@ -232,6 +252,9 @@ mod tests {
             y: 44.2705,
             x: -71.30325,
         };
-        assert_eq!(tile[mt_washington], tile.max_elev());
+        let mt_washington_xy = tile.coord_to_xy(mt_washington);
+        let mt_washington_elev = tile[(mt_washington_xy)];
+        let (max_idx, max_elev) = tile.max_elev();
+        assert_eq!((mt_washington_xy, tile[mt_washington]), tile.max_elev());
     }
 }
