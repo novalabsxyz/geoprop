@@ -1,5 +1,5 @@
 mod error;
-mod input;
+mod formats;
 mod options;
 
 use clap::Parser;
