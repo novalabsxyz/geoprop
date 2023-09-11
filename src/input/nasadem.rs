@@ -19,6 +19,11 @@ pub struct Tile {
     /// Specificlly, the _center_ of the SW most sample of the tile.
     sw_corner: Coord<i16>,
 
+    /// Northeast corner of the tile.
+    ///
+    /// Specificlly, the _center_ of the NE most sample of the tile.
+    ne_corner: Coord<f64>,
+
     /// Arcseconds per sample.
     resolution: u8,
 
@@ -32,9 +37,14 @@ pub struct Tile {
 impl Tile {
     /// Returnes Self parsed from the file at `path`.
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, HError> {
+        let (resolution, dimensions) = extract_resolution(&path)?;
         let sw_corner = parse_sw_corner(&path)?;
 
-        let (resolution, dimensions) = extract_resolution(&path)?;
+        let ne_corner = Coord {
+            y: sw_corner.y as f64 + (dimensions.0 as f64 * resolution as f64) / 3600.0,
+            x: sw_corner.x as f64 + (dimensions.1 as f64 * resolution as f64) / 3600.0,
+        };
+
         let mut file = BufReader::new(File::open(path)?);
 
         let samples = {
@@ -55,10 +65,15 @@ impl Tile {
 
         Ok(Self {
             sw_corner,
+            ne_corner,
             resolution,
             dimensions,
             samples,
         })
+    }
+
+    pub fn max_elev(&self) -> i16 {
+        *self.samples.iter().max().unwrap()
     }
 
     /// Rreturns this tile's resolution in arcseconds per sample.
@@ -87,8 +102,11 @@ impl Tile {
 impl std::ops::Index<Coord<f64>> for Tile {
     type Output = i16;
 
-    fn index(&self, _coord: Coord<f64>) -> &Self::Output {
-        unimplemented!()
+    fn index(&self, coord: Coord<f64>) -> &Self::Output {
+        let c = 3600.0 / self.resolution as f64;
+        let x = ((coord.x - (self.sw_corner.x as f64)) * c) as usize;
+        let y = ((coord.y - (self.sw_corner.y as f64)) * c) as usize;
+        &self[(x, y)]
     }
 }
 
@@ -203,5 +221,17 @@ mod tests {
                 idx += 1;
             }
         }
+    }
+
+    #[test]
+    fn test_tile_geo_index() {
+        let mut path = one_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let tile = Tile::open(&path).unwrap();
+        let mt_washington = Coord {
+            y: 44.2705,
+            x: -71.30325,
+        };
+        assert_eq!(tile[mt_washington], tile.max_elev());
     }
 }
