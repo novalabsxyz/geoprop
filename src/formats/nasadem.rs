@@ -201,7 +201,7 @@ fn parse_sw_corner<P: AsRef<Path>>(path: P) -> Result<Coord<i16>, HError> {
 }
 
 #[cfg(test)]
-mod tests {
+mod _1_arc_second {
     use super::*;
     use std::path::PathBuf;
 
@@ -269,6 +269,83 @@ mod tests {
         let tile = Tile::open(&path).unwrap();
         for row in (0..3601).rev() {
             for col in 0..3601 {
+                let _1d = tile._2d_to_1d((col, row));
+                let roundtrip_2d = tile._1d_to_2d(_1d);
+                assert_eq!((col, row), roundtrip_2d);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod _3_arc_second {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn three_arcsecond_dir() -> PathBuf {
+        [env!("CARGO_MANIFEST_DIR"), "data", "nasadem", "3arcsecond"]
+            .iter()
+            .collect()
+    }
+
+    #[test]
+    fn test_parse_hgt_name() {
+        let mut path = three_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let sw_corner = parse_sw_corner(&path).unwrap();
+        let resolution = extract_resolution(&path).unwrap();
+        assert_eq!(sw_corner, Coord { x: -72, y: 44 });
+        assert_eq!(resolution, (3, (1201, 1201)));
+    }
+
+    #[test]
+    fn test_tile_open() {
+        let mut path = three_arcsecond_dir();
+        path.push("N44W072.hgt");
+        Tile::open(path).unwrap();
+    }
+
+    #[test]
+    fn test_tile_index() {
+        let mut path = three_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let tile = Tile::open(&path).unwrap();
+        let raw_file_samples = {
+            let mut file_data = Vec::new();
+            let mut file = BufReader::new(File::open(path).unwrap());
+            while let Ok(sample) = file.read_i16::<BE>() {
+                file_data.push(sample);
+            }
+            file_data
+        };
+        let mut idx = 0;
+        for row in (0..1201).rev() {
+            for col in 0..1201 {
+                assert_eq!(raw_file_samples[idx], tile[(col, row)]);
+                idx += 1;
+            }
+        }
+    }
+
+    #[test]
+    fn test_tile_geo_index() {
+        let mut path = three_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let tile = Tile::open(&path).unwrap();
+        let mt_washington = Coord {
+            y: 44.2705,
+            x: -71.30325,
+        };
+        assert_eq!(tile[mt_washington], tile.max_elev());
+    }
+
+    #[test]
+    fn test_tile_index_conversions() {
+        let mut path = three_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let tile = Tile::open(&path).unwrap();
+        for row in (0..1201).rev() {
+            for col in 0..1201 {
                 let _1d = tile._2d_to_1d((col, row));
                 let roundtrip_2d = tile._1d_to_2d(_1d);
                 assert_eq!((col, row), roundtrip_2d);
