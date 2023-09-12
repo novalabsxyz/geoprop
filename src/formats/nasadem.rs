@@ -9,11 +9,12 @@
 
 use crate::error::HError;
 use byteorder::{BigEndian as BE, ReadBytesExt};
-use geo_types::{Coord, Polygon};
+use geo_types::{polygon, Coord, Polygon};
 use memmap2::Mmap;
 use std::{fs::File, io::BufReader, mem::size_of, path::Path};
 
 const ARCSEC_PER_DEG: f64 = 3600.0;
+const HALF_ARCSEC: f64 = 1.0 / (2.0 * 3600.0);
 
 pub struct Tile {
     /// Southwest corner of the tile.
@@ -150,10 +151,6 @@ impl Tile {
         self.samples.get(_1d_idx)
     }
 
-    pub fn poly_at_idx(&self, _idx: usize) -> Polygon<f64> {
-        unimplemented!()
-    }
-
     /// Returns and iterator over `self`'s grid squares.
     pub fn iter(&self) -> impl Iterator<Item = Sample<'_>> + '_ {
         (0..(self.dimensions.0 * self.dimensions.1)).map(|index| Sample {
@@ -183,6 +180,30 @@ impl Tile {
     fn xy_to_linear_index(&self, (x, y): (usize, usize)) -> usize {
         self.dimensions.0 * (self.dimensions.1 - y - 1) + x
     }
+
+    fn xy_to_polygon(&self, (x, y): (usize, usize)) -> Polygon<f64> {
+        let center = Coord {
+            x: self.sw_corner.x + (y as f64 * self.resolution as f64) / ARCSEC_PER_DEG,
+            y: self.sw_corner.y + (x as f64 * self.resolution as f64) / ARCSEC_PER_DEG,
+        };
+        polygon(&center, self.resolution as f64)
+    }
+}
+
+/// Generate a `res`-arcsecond square around `center`.
+fn polygon(center: &Coord<f64>, res: f64) -> Polygon<f64> {
+    let delta = res * HALF_ARCSEC;
+    let n = center.y + delta;
+    let e = center.x + delta;
+    let s = center.y - delta;
+    let w = center.x - delta;
+    polygon![
+        (x: w, y: s),
+        (x: e, y: s),
+        (x: e, y: n),
+        (x: w, y: n),
+        (x: w, y: s),
+    ]
 }
 
 /// A NASADEM elevation sample.
@@ -324,6 +345,7 @@ mod _1_arc_second {
 #[cfg(test)]
 mod _3_arc_second {
     use super::*;
+    use geo_types::LineString;
     use std::path::PathBuf;
 
     fn three_arcsecond_dir() -> PathBuf {
@@ -397,5 +419,25 @@ mod _3_arc_second {
                 assert_eq!((col, row), roundtrip_2d);
             }
         }
+    }
+
+    #[test]
+    fn test_xy_to_polygon() {
+        let mut path = three_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let parsed_tile = Tile::parse(&path).unwrap();
+        assert_eq!(
+            parsed_tile.xy_to_polygon((0, 0)),
+            Polygon::new(
+                LineString::from(vec![
+                    (-72.00041666666667, 43.999583333333334),
+                    (-71.99958333333333, 43.999583333333334),
+                    (-71.99958333333333, 44.000416666666666),
+                    (-72.00041666666667, 44.000416666666666),
+                    (-72.00041666666667, 43.999583333333334),
+                ]),
+                vec![],
+            )
+        );
     }
 }
