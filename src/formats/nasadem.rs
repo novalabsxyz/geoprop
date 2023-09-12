@@ -5,6 +5,7 @@
 //! https://dwtkns.com/srtm30m
 //! https://www.researchgate.net/profile/Pierre-Boulanger-4/publication/228924813/figure/fig8/AS:300852653903880@1448740270695/Description-of-a-HGT-file-structure-The-name-file-in-this-case-is-N20W100HGT.png
 //! http://fileformats.archiveteam.org/wiki/HGT
+//! https://lpdaac.usgs.gov/documents/179/SRTM_User_Guide_V3.pdf
 
 use crate::error::HError;
 use byteorder::{BigEndian as BE, ReadBytesExt};
