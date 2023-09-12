@@ -217,14 +217,12 @@ pub struct Sample<'a> {
 
 impl<'a> Sample<'a> {
     pub fn elevation(&self) -> i16 {
-        match &self.parent.samples {
-            Storage::Parsed(samples) => samples[self.index],
-            Storage::Mapped(_raw) => unimplemented!(),
-        }
+        self.parent.samples.get(self.index)
     }
 
     pub fn polygon(&self) -> Polygon {
-        unimplemented!()
+        self.parent
+            .xy_to_polygon(self.parent.linear_index_to_xy(self.index))
     }
 }
 
