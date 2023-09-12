@@ -12,6 +12,8 @@ use geo_types::{Coord, Polygon};
 use memmap2::Mmap;
 use std::{fs::File, io::BufReader, mem::size_of, path::Path};
 
+const ARCSEC_PER_DEG: f64 = 3600.0;
+
 pub struct Tile {
     /// Southwest corner of the tile.
     ///
@@ -65,8 +67,8 @@ impl Tile {
         };
 
         let ne_corner = Coord {
-            y: sw_corner.y + (dimensions.0 as f64 * resolution as f64) / 3600.0,
-            x: sw_corner.x + (dimensions.1 as f64 * resolution as f64) / 3600.0,
+            y: sw_corner.y + (dimensions.0 as f64 * resolution as f64) / ARCSEC_PER_DEG,
+            x: sw_corner.x + (dimensions.1 as f64 * resolution as f64) / ARCSEC_PER_DEG,
         };
 
         let mut file = BufReader::new(File::open(path)?);
@@ -104,8 +106,8 @@ impl Tile {
         };
 
         let ne_corner = Coord {
-            y: sw_corner.y + (cols as f64 * resolution as f64) / 3600.0,
-            x: sw_corner.x + (rows as f64 * resolution as f64) / 3600.0,
+            y: sw_corner.y + (cols as f64 * resolution as f64) / ARCSEC_PER_DEG,
+            x: sw_corner.x + (rows as f64 * resolution as f64) / ARCSEC_PER_DEG,
         };
 
         let samples = {
@@ -160,7 +162,7 @@ impl Tile {
     }
 
     pub fn coord_to_xy(&self, coord: Coord<f64>) -> (usize, usize) {
-        let c = 3600.0 / self.resolution as f64;
+        let c = ARCSEC_PER_DEG / self.resolution as f64;
         // TODO: do we need to compensate for cell width. If so, does
         //       the following accomplish that? It seems to in the
         //       Mt. Washington test.
