@@ -1,15 +1,17 @@
-[package]
-name = "hexonify"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = [
+  "nasadem",
+  "hexonify",
+]
 
-[dependencies]
+[workspace.dependencies]
 byteorder = "1.4.3"
-clap = { version = "4.4.2", features = ["derive"] }
+clap      = { version = "4.4.2", features = ["derive"] }
 geo-types = "0.7.11"
-h3o = { version = "0.4.0", features = ["geo"] }
-hextree = "0.3.1"
+h3o       = { version = "0.4.0", features = ["geo"] }
+hextree   = "0.3.1"
 indicatif = "0.17.6"
-memmap2 = "0.7.1"
-rayon = "1.7.0"
+kml       = "0.8.3"
+memmap2   = "0.7.1"
+rayon     = "1.7.0"
 thiserror = "1.0.48"

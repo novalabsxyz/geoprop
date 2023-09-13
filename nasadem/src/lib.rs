@@ -7,6 +7,8 @@
 //! http://fileformats.archiveteam.org/wiki/HGT
 //! https://lpdaac.usgs.gov/documents/179/SRTM_User_Guide_V3.pdf
 
+mod error;
+
 use crate::error::HError;
 use byteorder::{BigEndian as BE, ReadBytesExt};
 use geo_types::{polygon, Coord, Polygon};
@@ -267,9 +269,15 @@ mod _1_arc_second {
     use std::path::PathBuf;
 
     fn one_arcsecond_dir() -> PathBuf {
-        [env!("CARGO_MANIFEST_DIR"), "data", "nasadem", "1arcsecond"]
-            .iter()
-            .collect()
+        [
+            env!("CARGO_MANIFEST_DIR"),
+            "..",
+            "data",
+            "nasadem",
+            "1arcsecond",
+        ]
+        .iter()
+        .collect()
     }
 
     #[test]
@@ -347,9 +355,15 @@ mod _3_arc_second {
     use std::path::PathBuf;
 
     fn three_arcsecond_dir() -> PathBuf {
-        [env!("CARGO_MANIFEST_DIR"), "data", "nasadem", "3arcsecond"]
-            .iter()
-            .collect()
+        [
+            env!("CARGO_MANIFEST_DIR"),
+            "..",
+            "data",
+            "nasadem",
+            "3arcsecond",
+        ]
+        .iter()
+        .collect()
     }
 
     #[test]
