@@ -267,7 +267,9 @@ fn parse_sw_corner<P: AsRef<Path>>(path: P) -> Result<Coord<i16>, HError> {
 
 #[cfg(test)]
 mod _1_arc_second {
-    use super::*;
+    use super::{
+        extract_resolution, parse_sw_corner, BufReader, Coord, File, ReadBytesExt, Tile, BE,
+    };
     use std::path::PathBuf;
 
     fn one_arcsecond_dir() -> PathBuf {
@@ -352,7 +354,10 @@ mod _1_arc_second {
 
 #[cfg(test)]
 mod _3_arc_second {
-    use super::*;
+    use super::{
+        extract_resolution, parse_sw_corner, BufReader, Coord, File, Polygon, ReadBytesExt, Tile,
+        BE,
+    };
     use geo_types::LineString;
     use std::path::PathBuf;
 
