@@ -67,14 +67,14 @@ impl Tile {
         let sw_corner = {
             let Coord { x, y } = parse_sw_corner(&path)?;
             Coord {
-                x: x as f64,
-                y: y as f64,
+                x: f64::from(x),
+                y: f64::from(y),
             }
         };
 
         let ne_corner = Coord {
-            y: sw_corner.y + (dimensions.0 as f64 * resolution as f64) / ARCSEC_PER_DEG,
-            x: sw_corner.x + (dimensions.1 as f64 * resolution as f64) / ARCSEC_PER_DEG,
+            y: sw_corner.y + (dimensions.0 as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
+            x: sw_corner.x + (dimensions.1 as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
         };
 
         let mut file = BufReader::new(File::open(path)?);
@@ -106,14 +106,14 @@ impl Tile {
         let sw_corner = {
             let Coord { x, y } = parse_sw_corner(&path)?;
             Coord {
-                x: x as f64,
-                y: y as f64,
+                x: f64::from(x),
+                y: f64::from(y),
             }
         };
 
         let ne_corner = Coord {
-            y: sw_corner.y + (cols as f64 * resolution as f64) / ARCSEC_PER_DEG,
-            x: sw_corner.x + (rows as f64 * resolution as f64) / ARCSEC_PER_DEG,
+            y: sw_corner.y + (cols as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
+            x: sw_corner.x + (rows as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
         };
 
         let samples = {
@@ -164,7 +164,7 @@ impl Tile {
     }
 
     pub fn coord_to_xy(&self, coord: Coord<f64>) -> (usize, usize) {
-        let c = ARCSEC_PER_DEG / self.resolution as f64;
+        let c = ARCSEC_PER_DEG / f64::from(self.resolution);
         // TODO: do we need to compensate for cell width. If so, does
         //       the following accomplish that? It seems to in the
         //       Mt. Washington test.
@@ -187,10 +187,10 @@ impl Tile {
 
     fn xy_to_polygon(&self, (x, y): (usize, usize)) -> Polygon<f64> {
         let center = Coord {
-            x: self.sw_corner.x + (y as f64 * self.resolution as f64) / ARCSEC_PER_DEG,
-            y: self.sw_corner.y + (x as f64 * self.resolution as f64) / ARCSEC_PER_DEG,
+            x: self.sw_corner.x + (y as f64 * f64::from(self.resolution)) / ARCSEC_PER_DEG,
+            y: self.sw_corner.y + (x as f64 * f64::from(self.resolution)) / ARCSEC_PER_DEG,
         };
-        polygon(&center, self.resolution as f64)
+        polygon(&center, f64::from(self.resolution))
     }
 }
 
