@@ -14,7 +14,10 @@ pub struct TileSource {
     /// Directory containing NASADEM HGT tile files.
     tile_dir: PathBuf,
     /// Tiles which have been loaded on demand.
-    tiles: DashMap<Coord<i32>, Arc<Tile>>,
+    ///
+    /// Tiles are wrapped in an Option to differenctate between having
+    /// never attempted to load it from disk vs not exisiting on disk.
+    tiles: DashMap<Coord<i32>, Option<Arc<Tile>>>,
 }
 
 impl TileSource {
@@ -48,17 +51,17 @@ impl TileSource {
             let tile = {
                 let file_name = file_name(sw_corner);
                 let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
-                let tile = match Tile::memmap(tile_path) {
-                    Ok(tile) => tile,
-                    Err(HError::Io(e)) if e.kind() == ErrorKind::NotFound => return Ok(None),
-                    err => err?,
-                };
-                Arc::new(tile)
+                match Tile::memmap(tile_path) {
+                    Ok(tile) => Some(Arc::new(tile)),
+                    Err(HError::Io(e)) if e.kind() == ErrorKind::NotFound => None,
+                    Err(e) => return Err(TerrainError::Nasadem(e)),
+                }
             };
-            e.insert(tile);
+            e.insert(tile.clone());
+            Ok(tile)
+        } else {
+            Ok(self.tiles.get(&sw_corner).as_deref().cloned().flatten())
         }
-
-        Ok(self.tiles.get(&sw_corner).as_deref().cloned())
     }
 }
 
