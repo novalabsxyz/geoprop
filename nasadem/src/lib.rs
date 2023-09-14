@@ -11,7 +11,7 @@
 
 mod error;
 
-pub use crate::error::HError;
+pub use crate::error::NasademError;
 use byteorder::{BigEndian as BE, ReadBytesExt};
 use geo_types::{polygon, Coord, Polygon};
 #[cfg(feature = "kml")]
@@ -98,7 +98,7 @@ impl Storage {
 
 impl Tile {
     /// Returns a Tile read into memory from the file at `path`.
-    pub fn parse<P: AsRef<Path>>(path: P) -> Result<Self, HError> {
+    pub fn parse<P: AsRef<Path>>(path: P) -> Result<Self, NasademError> {
         let (resolution, dimensions @ (cols, rows)) = extract_resolution(&path)?;
         let sw_corner = {
             let Coord { x, y } = parse_sw_corner(&path)?;
@@ -142,7 +142,7 @@ impl Tile {
     }
 
     /// Returns a Tile using the memory-mapped file as storage.
-    pub fn memmap<P: AsRef<Path>>(path: P) -> Result<Self, HError> {
+    pub fn memmap<P: AsRef<Path>>(path: P) -> Result<Self, NasademError> {
         let (resolution, dimensions @ (cols, rows)) = extract_resolution(&path)?;
         let sw_corner = {
             let Coord { x, y } = parse_sw_corner(&path)?;
@@ -321,18 +321,18 @@ impl<'a> Sample<'a> {
     }
 }
 
-fn extract_resolution<P: AsRef<Path>>(path: P) -> Result<(u8, (usize, usize)), HError> {
+fn extract_resolution<P: AsRef<Path>>(path: P) -> Result<(u8, (usize, usize)), NasademError> {
     const RES_1_ARCSECONDS_FIBE_BEN: u64 = 3601 * 3601 * size_of::<u16>() as u64;
     const RES_3_ARCSECONDS_FIBE_BEN: u64 = 1201 * 1201 * size_of::<u16>() as u64;
     match path.as_ref().metadata().map(|m| m.len())? {
         RES_1_ARCSECONDS_FIBE_BEN => Ok((1, (3601, 3601))),
         RES_3_ARCSECONDS_FIBE_BEN => Ok((3, (1201, 1201))),
-        invalid_len => Err(HError::HgtLen(invalid_len)),
+        invalid_len => Err(NasademError::HgtLen(invalid_len)),
     }
 }
 
-fn parse_sw_corner<P: AsRef<Path>>(path: P) -> Result<Coord<i16>, HError> {
-    let mk_err = || HError::HgtName(path.as_ref().to_owned());
+fn parse_sw_corner<P: AsRef<Path>>(path: P) -> Result<Coord<i16>, NasademError> {
+    let mk_err = || NasademError::HgtName(path.as_ref().to_owned());
     let name = path
         .as_ref()
         .file_stem()

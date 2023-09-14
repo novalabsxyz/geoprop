@@ -3,7 +3,7 @@
 use crate::TerrainError;
 use dashmap::{mapref::entry::Entry, DashMap};
 use geo_types::Coord;
-use nasadem::{HError, Tile};
+use nasadem::{NasademError, Tile};
 use std::{
     io::ErrorKind,
     path::{Path, PathBuf},
@@ -53,7 +53,7 @@ impl TileSource {
                 let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
                 match Tile::memmap(tile_path) {
                     Ok(tile) => Some(Arc::new(tile)),
-                    Err(HError::Io(e)) if e.kind() == ErrorKind::NotFound => None,
+                    Err(NasademError::Io(e)) if e.kind() == ErrorKind::NotFound => None,
                     Err(e) => return Err(TerrainError::Nasadem(e)),
                 }
             };

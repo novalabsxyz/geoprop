@@ -1,4 +1,4 @@
-mod aggregator;
 mod error;
+mod tile_source;
 
-pub use crate::{aggregator::TileSource, error::TerrainError};
+pub use crate::{error::TerrainError, tile_source::TileSource};

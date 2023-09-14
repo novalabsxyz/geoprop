@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum HError {
+pub enum NasademError {
     #[error("")]
     Io(#[from] std::io::Error),
 

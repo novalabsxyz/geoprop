@@ -1,4 +1,4 @@
-use nasadem::HError;
+use nasadem::NasademError;
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -11,5 +11,5 @@ pub enum TerrainError {
     Path(PathBuf),
 
     #[error("{0}")]
-    Nasadem(#[from] HError),
+    Nasadem(#[from] NasademError),
 }
