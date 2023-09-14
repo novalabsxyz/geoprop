@@ -51,7 +51,7 @@ impl TileSource {
             let tile = {
                 let file_name = file_name(sw_corner);
                 let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
-                match Tile::memmap(tile_path) {
+                match Tile::parse(tile_path) {
                     Ok(tile) => Some(Arc::new(tile)),
                     Err(NasademError::Io(e)) if e.kind() == ErrorKind::NotFound => None,
                     Err(e) => return Err(TerrainError::Nasadem(e)),
@@ -96,7 +96,7 @@ fn file_name(Coord { x, y }: Coord<i32>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{file_name, sw_corner, Coord, PathBuf, TileSource};
+    use super::{file_name, sw_corner, Coord, TileSource};
 
     const MT_WASHINGTON: Coord = Coord {
         y: 44.2705,
@@ -105,27 +105,15 @@ mod tests {
 
     const SOUTH_POLE: Coord = Coord { y: -90.0, x: 0.0 };
 
-    fn three_arcsecond_dir() -> PathBuf {
-        [
-            env!("CARGO_MANIFEST_DIR"),
-            "..",
-            "data",
-            "nasadem",
-            "3arcsecond",
-        ]
-        .iter()
-        .collect()
-    }
-
     #[test]
     fn test_get_invalid() {
-        let tile_src = TileSource::new(three_arcsecond_dir()).unwrap();
+        let tile_src = TileSource::new(crate::three_arcsecond_dir()).unwrap();
         assert!(tile_src.get(SOUTH_POLE).unwrap().is_none());
     }
 
     #[test]
     fn test_get() {
-        let tile_src = TileSource::new(three_arcsecond_dir()).unwrap();
+        let tile_src = TileSource::new(crate::three_arcsecond_dir()).unwrap();
         let tile = tile_src.get(MT_WASHINGTON).unwrap().unwrap();
         assert_eq!(tile.get_unchecked(MT_WASHINGTON), 1903);
     }

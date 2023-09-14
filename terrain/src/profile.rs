@@ -1,4 +1,4 @@
-use crate::TerrainError;
+use crate::{TerrainError, TileSource};
 use geo::{
     algorithm::geodesic_intermediate::GeodesicIntermediate,
     geometry::{Coord, Point},
@@ -7,10 +7,15 @@ use geo::{
 #[derive(Debug, Clone, PartialEq)]
 pub struct Profile {
     pub points: Vec<Point<f64>>,
+    pub terrain: Vec<i16>,
 }
 
 impl Profile {
-    pub fn new(start: Coord<f64>, end: Coord<f64>) -> Result<Self, TerrainError> {
+    pub fn new(
+        start: Coord<f64>,
+        end: Coord<f64>,
+        tiles: &TileSource,
+    ) -> Result<Self, TerrainError> {
         let points = GeodesicIntermediate::geodesic_intermediate_fill(
             &Point::from(start),
             &Point::from(end),
@@ -18,13 +23,20 @@ impl Profile {
             true,
         );
 
-        Ok(Self { points })
+        let mut terrain = Vec::with_capacity(points.len());
+        for point in &points {
+            let maybe_tile = tiles.get(point.0)?;
+            let elevation = maybe_tile.and_then(|tile| tile.get(point.0)).unwrap_or(0);
+            terrain.push(elevation)
+        }
+
+        Ok(Self { points, terrain })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Coord, Profile};
+    use super::{Coord, Profile, TileSource};
 
     /// ```xml
     /// <?xml version="1.0" encoding="UTF-8"?>
@@ -82,7 +94,8 @@ mod tests {
             x: -71.2972073283768,
             y: 44.25628098424278,
         };
-        let profile = Profile::new(start, end).unwrap();
-        assert_eq!(profile, Profile { points: vec![] });
+
+        let tile_source = TileSource::new(crate::three_arcsecond_dir()).unwrap();
+        let _profile = Profile::new(start, end, &tile_source).unwrap();
     }
 }
