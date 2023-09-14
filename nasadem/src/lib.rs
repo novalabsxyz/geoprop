@@ -186,12 +186,12 @@ impl Tile {
     }
 
     /// Returns the lowest elevation sample in this tile.
-    pub fn min_elev(&mut self) -> i16 {
+    pub fn min_elev(&self) -> i16 {
         self.min_elev
     }
 
     /// Returns the highest elevation sample in this tile.
-    pub fn max_elev(&mut self) -> i16 {
+    pub fn max_elev(&self) -> i16 {
         self.max_elev
     }
 
@@ -420,7 +420,7 @@ mod _1_arc_second {
     fn test_tile_geo_index() {
         let mut path = one_arcsecond_dir();
         path.push("N44W072.hgt");
-        let mut tile = Tile::parse(&path).unwrap();
+        let tile = Tile::parse(&path).unwrap();
         let mt_washington = Coord {
             y: 44.2705,
             x: -71.30325,
