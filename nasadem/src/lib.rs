@@ -13,7 +13,10 @@ mod error;
 
 pub use crate::error::NasademError;
 use byteorder::{BigEndian as BE, ReadBytesExt};
-use geo_types::{polygon, Coord, Polygon};
+use geo::{
+    geometry::{Coord, Polygon},
+    polygon,
+};
 #[cfg(feature = "kml")]
 use kml::{
     self,
@@ -449,7 +452,7 @@ mod _3_arc_second {
         extract_resolution, parse_sw_corner, BufReader, Coord, File, Polygon, ReadBytesExt, Tile,
         BE,
     };
-    use geo_types::LineString;
+    use geo::geometry::LineString;
     use std::path::PathBuf;
 
     #[cfg(feature = "kml")]

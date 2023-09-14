@@ -9,7 +9,7 @@ kml     = ["dep:kml"]
 
 [dependencies]
 byteorder = { workspace = true }
-geo-types = { workspace = true }
+geo       = { workspace = true }
 kml       = { workspace = true, optional = true }
 memmap2   = { workspace = true }
 thiserror = { workspace = true }

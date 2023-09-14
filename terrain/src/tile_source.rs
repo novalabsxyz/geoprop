@@ -2,7 +2,7 @@
 
 use crate::TerrainError;
 use dashmap::{mapref::entry::Entry, DashMap};
-use geo_types::Coord;
+use geo::geometry::Coord;
 use nasadem::{NasademError, Tile};
 use std::{
     io::ErrorKind,
