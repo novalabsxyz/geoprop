@@ -24,7 +24,7 @@ impl Profile {
         );
 
         let mut terrain = Vec::with_capacity(points.len());
-        for point in &points {
+        for point in points.iter() {
             let maybe_tile = tiles.get(point.0)?;
             let elevation = maybe_tile.and_then(|tile| tile.get(point.0)).unwrap_or(0);
             terrain.push(elevation)
@@ -96,6 +96,7 @@ mod tests {
         };
 
         let tile_source = TileSource::new(crate::three_arcsecond_dir()).unwrap();
-        let _profile = Profile::new(start, end, &tile_source).unwrap();
+        let profile = Profile::new(start, end, &tile_source).unwrap();
+        println!("{profile:?}");
     }
 }

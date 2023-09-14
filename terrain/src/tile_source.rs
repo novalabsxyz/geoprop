@@ -46,7 +46,6 @@ impl TileSource {
     /// doesn't already have it in memory.
     pub fn get(&self, coord: Coord<f64>) -> Result<Option<Arc<Tile>>, TerrainError> {
         let sw_corner = sw_corner(coord);
-
         if let Entry::Vacant(e) = self.tiles.entry(sw_corner) {
             let tile = {
                 let file_name = file_name(sw_corner);
@@ -57,11 +56,10 @@ impl TileSource {
                     Err(e) => return Err(TerrainError::Nasadem(e)),
                 }
             };
-            e.insert(tile.clone());
-            Ok(tile)
-        } else {
-            Ok(self.tiles.get(&sw_corner).as_deref().cloned().flatten())
-        }
+            e.insert(tile);
+        };
+
+        Ok(self.tiles.get(&sw_corner).as_deref().cloned().flatten())
     }
 }
 
