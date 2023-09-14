@@ -1,4 +1,4 @@
 mod aggregator;
 mod error;
 
-pub use aggregator::TileSource;
+pub use crate::{aggregator::TileSource, error::TerrainError};

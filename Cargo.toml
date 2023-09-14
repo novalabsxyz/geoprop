@@ -8,6 +8,7 @@ members = [
 [workspace.dependencies]
 byteorder = "1.4.3"
 clap      = { version = "4.4.2", features = ["derive"] }
+dashmap   = "5.5.3"
 geo-types = "0.7.11"
 h3o       = { version = "0.4.0", features = ["geo"] }
 hextree   = "0.3.1"

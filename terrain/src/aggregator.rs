@@ -1,23 +1,24 @@
 //! NASADEM file aggregator.
 
+use crate::TerrainError;
+use dashmap::{mapref::entry::Entry, DashMap};
 use geo_types::Coord;
 use nasadem::Tile;
 use std::{
-    collections::HashMap,
     path::{Path, PathBuf},
-    // sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 pub struct TileSource {
     /// Directory containing NASADEM HGT tile files.
     tile_dir: PathBuf,
     /// Tiles which have been loaded on demand.
-    tiles: HashMap<Coord<i32>, Tile>,
+    tiles: DashMap<Coord<i32>, Arc<Tile>>,
 }
 
 impl TileSource {
     pub fn new(tile_dir: PathBuf) -> Self {
-        let tiles = HashMap::new();
+        let tiles = DashMap::new();
         Self { tile_dir, tiles }
     }
 
@@ -25,19 +26,19 @@ impl TileSource {
     ///
     /// This TileSource will attempt to load the tile from disk if it
     /// doesn't already have it in memory.
-    pub fn get(&mut self, coord: Coord<f64>) -> Option<&Tile> {
+    pub fn get(&self, coord: Coord<f64>) -> Result<Option<Arc<Tile>>, TerrainError> {
         let sw_corner = sw_corner(coord);
 
-        if let std::collections::hash_map::Entry::Vacant(e) = self.tiles.entry(sw_corner) {
+        if let Entry::Vacant(e) = self.tiles.entry(sw_corner) {
             let tile = {
                 let file_name = file_name(sw_corner);
                 let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
-                Tile::memmap(tile_path).unwrap()
+                Arc::new(Tile::memmap(tile_path)?)
             };
             e.insert(tile);
         }
 
-        self.tiles.get(&sw_corner)
+        Ok(self.tiles.get(&sw_corner).as_deref().cloned())
     }
 }
 
@@ -79,23 +80,31 @@ mod tests {
         x: -71.30325,
     };
 
-    fn one_arcsecond_dir() -> PathBuf {
+    const SOUTH_POLE: Coord = Coord { y: -90.0, x: 0.0 };
+
+    fn three_arcsecond_dir() -> PathBuf {
         [
             env!("CARGO_MANIFEST_DIR"),
             "..",
             "data",
             "nasadem",
-            "1arcsecond",
+            "3arcsecond",
         ]
         .iter()
         .collect()
     }
 
     #[test]
+    fn test_get_invalid() {
+        let tile_src = TileSource::new(three_arcsecond_dir());
+        assert!(tile_src.get(SOUTH_POLE).unwrap().is_none());
+    }
+
+    #[test]
     fn test_get() {
-        let mut tile_src = TileSource::new(one_arcsecond_dir());
-        let tile = tile_src.get(MT_WASHINGTON).unwrap();
-        assert_eq!(tile.get_unchecked(MT_WASHINGTON), 1914);
+        let tile_src = TileSource::new(three_arcsecond_dir());
+        let tile = tile_src.get(MT_WASHINGTON).unwrap().unwrap();
+        assert_eq!(tile.get_unchecked(MT_WASHINGTON), 1903);
     }
 
     #[test]
