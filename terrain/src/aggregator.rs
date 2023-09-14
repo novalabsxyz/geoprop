@@ -3,8 +3,9 @@
 use crate::TerrainError;
 use dashmap::{mapref::entry::Entry, DashMap};
 use geo_types::Coord;
-use nasadem::Tile;
+use nasadem::{HError, Tile};
 use std::{
+    io::ErrorKind,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -17,9 +18,23 @@ pub struct TileSource {
 }
 
 impl TileSource {
-    pub fn new(tile_dir: PathBuf) -> Self {
-        let tiles = DashMap::new();
-        Self { tile_dir, tiles }
+    pub fn new(tile_dir: PathBuf) -> Result<Self, TerrainError> {
+        let mut has_height_files = false;
+
+        for entry in std::fs::read_dir(&tile_dir)? {
+            let path = entry?.path();
+            if Some("hgt") == path.extension().and_then(|ext| ext.to_str()) {
+                has_height_files = true;
+                break;
+            }
+        }
+
+        if has_height_files {
+            let tiles = DashMap::new();
+            Ok(Self { tile_dir, tiles })
+        } else {
+            Err(TerrainError::Path(tile_dir))
+        }
     }
 
     /// Returns the tile containiong `coord`, if any.
@@ -33,7 +48,12 @@ impl TileSource {
             let tile = {
                 let file_name = file_name(sw_corner);
                 let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
-                Arc::new(Tile::memmap(tile_path)?)
+                let tile = match Tile::memmap(tile_path) {
+                    Ok(tile) => tile,
+                    Err(HError::Io(e)) if e.kind() == ErrorKind::NotFound => return Ok(None),
+                    err => err?,
+                };
+                Arc::new(tile)
             };
             e.insert(tile);
         }
@@ -96,13 +116,13 @@ mod tests {
 
     #[test]
     fn test_get_invalid() {
-        let tile_src = TileSource::new(three_arcsecond_dir());
+        let tile_src = TileSource::new(three_arcsecond_dir()).unwrap();
         assert!(tile_src.get(SOUTH_POLE).unwrap().is_none());
     }
 
     #[test]
     fn test_get() {
-        let tile_src = TileSource::new(three_arcsecond_dir());
+        let tile_src = TileSource::new(three_arcsecond_dir()).unwrap();
         let tile = tile_src.get(MT_WASHINGTON).unwrap().unwrap();
         assert_eq!(tile.get_unchecked(MT_WASHINGTON), 1903);
     }
