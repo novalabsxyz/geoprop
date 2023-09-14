@@ -1,0 +1,9 @@
+[package]
+name = "terrain"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+geo-types = { workspace = true }
+nasadem   = { path = "../nasadem" }
+thiserror = { workspace = true }

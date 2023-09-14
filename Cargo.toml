@@ -2,6 +2,7 @@
 members = [
   "nasadem",
   "hexonify",
+  "terrain",
 ]
 
 [workspace.dependencies]
