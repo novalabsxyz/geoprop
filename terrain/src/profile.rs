@@ -36,7 +36,9 @@ impl Profile {
 
 #[cfg(test)]
 mod tests {
-    use super::{Coord, Profile, TileSource};
+    use super::{Coord, Point, Profile, TileSource};
+    use plotters::prelude::*;
+    use std::path::Path;
 
     /// ```xml
     /// <?xml version="1.0" encoding="UTF-8"?>
@@ -97,6 +99,52 @@ mod tests {
 
         let tile_source = TileSource::new(crate::three_arcsecond_dir()).unwrap();
         let profile = Profile::new(start, end, &tile_source).unwrap();
-        println!("{profile:?}");
+        profile.plot("/tmp/path.png");
+    }
+
+    impl Profile {
+        pub fn plot<P: AsRef<Path>>(&self, path: P) {
+            let root = BitMapBackend::new(&path, (1024, 500)).into_drawing_area();
+            root.fill(&WHITE).unwrap();
+            let Point(Coord {
+                x: start_x,
+                y: start_y,
+            }) = self.points.first().unwrap();
+            let Point(Coord { x: end_x, y: end_y }) = self.points.first().unwrap();
+            let caption = format!("{:6},{:6} to {:6},{:6}", start_y, start_x, end_x, end_y);
+            let mut chart = ChartBuilder::on(&root)
+                .caption(caption, ("sans-serif", 12).into_font())
+                .margin(5)
+                .x_label_area_size(30)
+                .y_label_area_size(30)
+                .build_cartesian_2d(
+                    0f32..(self.terrain.len() as f32 * 30.0f32),
+                    1300f32..2000f32,
+                )
+                .unwrap();
+
+            chart.configure_mesh().draw().unwrap();
+
+            chart
+                .draw_series(LineSeries::new(
+                    self.terrain
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, elev)| (idx as f32 * 30.0, *elev as f32)),
+                    &RED,
+                ))
+                .unwrap()
+                .label("Elevation")
+                .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
+
+            chart
+                .configure_series_labels()
+                .background_style(WHITE.mix(0.8))
+                .border_style(BLACK)
+                .draw()
+                .unwrap();
+
+            root.present().unwrap();
+        }
     }
 }

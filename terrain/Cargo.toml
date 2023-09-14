@@ -8,3 +8,6 @@ dashmap   = { workspace = true }
 geo       = { workspace = true }
 nasadem   = { path = "../nasadem" }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+plotters  = { workspace = true }
