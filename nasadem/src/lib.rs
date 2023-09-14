@@ -43,6 +43,12 @@ pub struct Tile {
     /// Number of (rows, columns) in this tile.
     dimensions: (usize, usize),
 
+    /// Lowest elevation sample in this tile.
+    min_elev: i16,
+
+    /// Highest elevation sample in this tile.
+    max_elev: i16,
+
     /// Elevation samples.
     samples: Storage,
 }
@@ -53,7 +59,7 @@ enum Storage {
 }
 
 impl Storage {
-    fn get(&self, index: usize) -> i16 {
+    fn get_unchecked(&self, index: usize) -> i16 {
         match self {
             Storage::Parsed(samples) => samples[index],
             Storage::Mapped(raw) => {
@@ -62,6 +68,30 @@ impl Storage {
                 let bytes = &mut &raw.as_ref()[start..end];
                 bytes.read_i16::<BE>().unwrap()
             }
+        }
+    }
+
+    /// Returns the lowest elevation sample in this data.
+    fn min_elev(&self) -> i16 {
+        match self {
+            Storage::Parsed(samples) => samples.iter().max().copied().unwrap(),
+            Storage::Mapped(raw) => (*raw)
+                .chunks_exact(2)
+                .map(|mut bytes| (&mut bytes).read_i16::<BE>().unwrap())
+                .max()
+                .unwrap(),
+        }
+    }
+
+    /// Returns the highest elevation sample in this data.
+    pub fn max_elev(&self) -> i16 {
+        match self {
+            Storage::Parsed(samples) => samples.iter().max().copied().unwrap(),
+            Storage::Mapped(raw) => (*raw)
+                .chunks_exact(2)
+                .map(|mut bytes| (&mut bytes).read_i16::<BE>().unwrap())
+                .max()
+                .unwrap(),
         }
     }
 }
@@ -97,11 +127,16 @@ impl Tile {
             Storage::Parsed(samples.into_boxed_slice())
         };
 
+        let min_elev = samples.min_elev();
+        let max_elev = samples.max_elev();
+
         Ok(Self {
             sw_corner,
             ne_corner,
             resolution,
             dimensions,
+            min_elev,
+            max_elev,
             samples,
         })
     }
@@ -128,11 +163,16 @@ impl Tile {
             Storage::Mapped(mmap)
         };
 
+        let min_elev = samples.min_elev();
+        let max_elev = samples.max_elev();
+
         Ok(Self {
             sw_corner,
             ne_corner,
             resolution,
             dimensions,
+            min_elev,
+            max_elev,
             samples,
         })
     }
@@ -145,11 +185,14 @@ impl Tile {
             .collect()
     }
 
-    pub fn max_elev(&self) -> i16 {
-        match &self.samples {
-            Storage::Parsed(samples) => *samples.iter().max().unwrap(),
-            Storage::Mapped(_raw) => unimplemented!(),
-        }
+    /// Returns the lowest elevation sample in this tile.
+    pub fn min_elev(&mut self) -> i16 {
+        self.min_elev
+    }
+
+    /// Returns the highest elevation sample in this tile.
+    pub fn max_elev(&mut self) -> i16 {
+        self.max_elev
     }
 
     /// Rreturns this tile's resolution in arcseconds per sample.
@@ -158,15 +201,21 @@ impl Tile {
     }
 
     /// Returns the sample at the given geo coordinates.
-    pub fn get_coord(&self, coord: Coord) -> i16 {
-        let _2d_idx = self.coord_to_xy(coord);
-        let _1d_idx = self.xy_to_linear_index(_2d_idx);
-        self.samples.get(_1d_idx)
+    pub fn get(&self, coord: Coord) -> Option<i16> {
+        let _2d_idx @ (idx_x, idx_y) = self.coord_to_xy(coord);
+        if idx_x < self.dimensions.0 && idx_y < self.dimensions.1 {
+            let _1d_idx = self.xy_to_linear_index(_2d_idx);
+            Some(self.samples.get_unchecked(_1d_idx))
+        } else {
+            None
+        }
     }
 
-    pub fn get_xy(&self, (x, y): (usize, usize)) -> i16 {
-        let _1d_idx = self.xy_to_linear_index((x, y));
-        self.samples.get(_1d_idx)
+    /// Returns the sample at the given geo coordinates.
+    pub fn get_unchecked(&self, coord: Coord) -> i16 {
+        let _2d_idx = self.coord_to_xy(coord);
+        let _1d_idx = self.xy_to_linear_index(_2d_idx);
+        self.samples.get_unchecked(_1d_idx)
     }
 
     /// Returns and iterator over `self`'s grid squares.
@@ -176,8 +225,16 @@ impl Tile {
             index,
         })
     }
+}
 
-    pub fn coord_to_xy(&self, coord: Coord<f64>) -> (usize, usize) {
+/// Private API
+impl Tile {
+    fn get_xy(&self, (x, y): (usize, usize)) -> i16 {
+        let _1d_idx = self.xy_to_linear_index((x, y));
+        self.samples.get_unchecked(_1d_idx)
+    }
+
+    fn coord_to_xy(&self, coord: Coord<f64>) -> (usize, usize) {
         let c = ARCSEC_PER_DEG / f64::from(self.resolution);
         // TODO: do we need to compensate for cell width. If so, does
         //       the following accomplish that? It seems to in the
@@ -189,7 +246,7 @@ impl Tile {
         (x, y)
     }
 
-    pub fn linear_index_to_xy(&self, idx: usize) -> (usize, usize) {
+    fn linear_index_to_xy(&self, idx: usize) -> (usize, usize) {
         let y = idx / self.dimensions.0;
         let x = idx % self.dimensions.1;
         (x, self.dimensions.1 - 1 - y)
@@ -235,7 +292,7 @@ pub struct Sample<'a> {
 
 impl<'a> Sample<'a> {
     pub fn elevation(&self) -> i16 {
-        self.parent.samples.get(self.index)
+        self.parent.samples.get_unchecked(self.index)
     }
 
     pub fn polygon(&self) -> Polygon {
@@ -364,12 +421,12 @@ mod _1_arc_second {
     fn test_tile_geo_index() {
         let mut path = one_arcsecond_dir();
         path.push("N44W072.hgt");
-        let tile = Tile::parse(&path).unwrap();
+        let mut tile = Tile::parse(&path).unwrap();
         let mt_washington = Coord {
             y: 44.2705,
             x: -71.30325,
         };
-        assert_eq!(tile.get_coord(mt_washington), tile.max_elev());
+        assert_eq!(tile.get_unchecked(mt_washington), tile.max_elev());
     }
 
     #[test]
