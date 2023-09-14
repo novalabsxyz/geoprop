@@ -50,7 +50,7 @@ pub struct Tile {
     max_elev: i16,
 
     /// Elevation samples.
-    samples: Storage,
+    sample_store: Storage,
 }
 
 enum Storage {
@@ -97,7 +97,7 @@ impl Storage {
 }
 
 impl Tile {
-    /// Returns Self parsed from the file at `path`.
+    /// Returns a Tile read into memory from the file at `path`.
     pub fn parse<P: AsRef<Path>>(path: P) -> Result<Self, HError> {
         let (resolution, dimensions @ (cols, rows)) = extract_resolution(&path)?;
         let sw_corner = {
@@ -115,20 +115,20 @@ impl Tile {
 
         let mut file = BufReader::new(File::open(path)?);
 
-        let samples = {
-            let mut samples = Vec::with_capacity(cols * rows);
+        let sample_store = {
+            let mut sample_store = Vec::with_capacity(cols * rows);
 
             for _ in 0..(cols * rows) {
                 let sample = file.read_i16::<BE>()?;
-                samples.push(sample);
+                sample_store.push(sample);
             }
 
-            assert_eq!(samples.len(), dimensions.0 * dimensions.1);
-            Storage::Parsed(samples.into_boxed_slice())
+            assert_eq!(sample_store.len(), dimensions.0 * dimensions.1);
+            Storage::Parsed(sample_store.into_boxed_slice())
         };
 
-        let min_elev = samples.min_elev();
-        let max_elev = samples.max_elev();
+        let min_elev = sample_store.min_elev();
+        let max_elev = sample_store.max_elev();
 
         Ok(Self {
             sw_corner,
@@ -137,11 +137,11 @@ impl Tile {
             dimensions,
             min_elev,
             max_elev,
-            samples,
+            sample_store,
         })
     }
 
-    /// Returns Self using the memory-mapped file as storage.
+    /// Returns a Tile using the memory-mapped file as storage.
     pub fn memmap<P: AsRef<Path>>(path: P) -> Result<Self, HError> {
         let (resolution, dimensions @ (cols, rows)) = extract_resolution(&path)?;
         let sw_corner = {
@@ -157,14 +157,14 @@ impl Tile {
             x: sw_corner.x + (rows as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
         };
 
-        let samples = {
+        let sample_store = {
             let file = File::open(path)?;
             let mmap = unsafe { Mmap::map(&file)? };
             Storage::Mapped(mmap)
         };
 
-        let min_elev = samples.min_elev();
-        let max_elev = samples.max_elev();
+        let min_elev = sample_store.min_elev();
+        let max_elev = sample_store.max_elev();
 
         Ok(Self {
             sw_corner,
@@ -173,7 +173,7 @@ impl Tile {
             dimensions,
             min_elev,
             max_elev,
-            samples,
+            sample_store,
         })
     }
 
@@ -205,7 +205,7 @@ impl Tile {
         let _2d_idx @ (idx_x, idx_y) = self.coord_to_xy(coord);
         if idx_x < self.dimensions.0 && idx_y < self.dimensions.1 {
             let _1d_idx = self.xy_to_linear_index(_2d_idx);
-            Some(self.samples.get_unchecked(_1d_idx))
+            Some(self.sample_store.get_unchecked(_1d_idx))
         } else {
             None
         }
@@ -215,7 +215,7 @@ impl Tile {
     pub fn get_unchecked(&self, coord: Coord) -> i16 {
         let _2d_idx = self.coord_to_xy(coord);
         let _1d_idx = self.xy_to_linear_index(_2d_idx);
-        self.samples.get_unchecked(_1d_idx)
+        self.sample_store.get_unchecked(_1d_idx)
     }
 
     /// Returns and iterator over `self`'s grid squares.
@@ -231,7 +231,7 @@ impl Tile {
 impl Tile {
     fn get_xy(&self, (x, y): (usize, usize)) -> i16 {
         let _1d_idx = self.xy_to_linear_index((x, y));
-        self.samples.get_unchecked(_1d_idx)
+        self.sample_store.get_unchecked(_1d_idx)
     }
 
     fn coord_to_xy(&self, coord: Coord<f64>) -> (usize, usize) {
@@ -292,7 +292,7 @@ pub struct Sample<'a> {
 
 impl<'a> Sample<'a> {
     pub fn elevation(&self) -> i16 {
-        self.parent.samples.get_unchecked(self.index)
+        self.parent.sample_store.get_unchecked(self.index)
     }
 
     pub fn polygon(&self) -> Polygon {
@@ -313,10 +313,9 @@ impl<'a> Sample<'a> {
             })
             .collect();
 
-        let outer_ring = {
-            let mut outer_ring = KmlLinearRing::default();
-            outer_ring.coords = outer_ring_coords;
-            outer_ring
+        let outer_ring = KmlLinearRing {
+            coords: outer_ring_coords,
+            ..Default::default()
         };
         KmlPolygon::new(outer_ring, Vec::new())
     }
