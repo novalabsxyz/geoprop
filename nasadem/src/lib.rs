@@ -11,9 +11,15 @@
 
 mod error;
 
-use crate::error::HError;
+pub use crate::error::HError;
 use byteorder::{BigEndian as BE, ReadBytesExt};
 use geo_types::{polygon, Coord, Polygon};
+#[cfg(feature = "kml")]
+use kml::{
+    self,
+    types::{Coord as KmlCoord, LinearRing as KmlLinearRing, Polygon as KmlPolygon},
+    Kml,
+};
 use memmap2::Mmap;
 use std::{fs::File, io::BufReader, mem::size_of, path::Path};
 
@@ -21,6 +27,8 @@ const ARCSEC_PER_DEG: f64 = 3600.0;
 const HALF_ARCSEC: f64 = 1.0 / (2.0 * 3600.0);
 
 pub struct Tile {
+    // /// The souce file stem.
+    // file_stem: String,
     /// Southwest corner of the tile.
     ///
     /// Specificlly, the _center_ of the SW most sample of the tile.
@@ -131,6 +139,14 @@ impl Tile {
         })
     }
 
+    #[cfg(feature = "kml")]
+    pub fn to_kml(&self) -> Vec<Kml> {
+        self.iter()
+            .take(10)
+            .map(|sample| Kml::Polygon(sample.to_kml()))
+            .collect()
+    }
+
     pub fn max_elev(&self) -> i16 {
         match &self.samples {
             Storage::Parsed(samples) => *samples.iter().max().unwrap(),
@@ -227,6 +243,27 @@ impl<'a> Sample<'a> {
     pub fn polygon(&self) -> Polygon {
         self.parent
             .xy_to_polygon(self.parent.linear_index_to_xy(self.index))
+    }
+
+    #[cfg(feature = "kml")]
+    pub fn to_kml(&self) -> KmlPolygon {
+        let geo_poly = self.polygon();
+        let outer_ring_coords: Vec<KmlCoord<f64>> = geo_poly
+            .exterior()
+            .coords()
+            .map(|Coord { x, y }| KmlCoord {
+                x: *x,
+                y: *y,
+                z: None,
+            })
+            .collect();
+
+        let outer_ring = {
+            let mut outer_ring = KmlLinearRing::default();
+            outer_ring.coords = outer_ring_coords;
+            outer_ring
+        };
+        KmlPolygon::new(outer_ring, Vec::new())
     }
 }
 
@@ -361,6 +398,9 @@ mod _3_arc_second {
     use geo_types::LineString;
     use std::path::PathBuf;
 
+    #[cfg(feature = "kml")]
+    use kml::types::{Kml, KmlDocument, KmlVersion};
+
     fn three_arcsecond_dir() -> PathBuf {
         [
             env!("CARGO_MANIFEST_DIR"),
@@ -458,5 +498,24 @@ mod _3_arc_second {
                 vec![],
             )
         );
+    }
+
+    #[cfg(feature = "kml")]
+    #[test]
+    fn test_to_kml() {
+        let kml_doc = {
+            let mut path = three_arcsecond_dir();
+            path.push("N44W072.hgt");
+            let parsed_tile = Tile::parse(&path).unwrap();
+            let elements = parsed_tile.to_kml();
+            Kml::KmlDocument(KmlDocument {
+                version: KmlVersion::V22,
+                elements,
+                ..Default::default()
+            })
+        };
+        let out = std::io::BufWriter::new(File::create("/tmp/N44W072.kml").unwrap());
+        let mut writer = kml::KmlWriter::from_writer(out);
+        writer.write(&kml_doc).unwrap();
     }
 }
