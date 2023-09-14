@@ -27,8 +27,6 @@ const ARCSEC_PER_DEG: f64 = 3600.0;
 const HALF_ARCSEC: f64 = 1.0 / (2.0 * 3600.0);
 
 pub struct Tile {
-    // /// The souce file stem.
-    // file_stem: String,
     /// Southwest corner of the tile.
     ///
     /// Specificlly, the _center_ of the SW most sample of the tile.
