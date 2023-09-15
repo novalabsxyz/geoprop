@@ -1,7 +1,7 @@
 //! NASADEM file aggregator.
 
 use crate::TerrainError;
-use dashmap::{mapref::entry::Entry, DashMap};
+use dashmap::DashMap;
 use geo::geometry::Coord;
 use nasadem::{NasademError, Tile};
 use std::{
@@ -57,20 +57,18 @@ impl TileSource {
     /// doesn't already have it in memory.
     pub fn get(&self, coord: Coord<f64>) -> Result<Arc<Tile>, TerrainError> {
         let sw_corner = sw_corner(coord);
-        if let Entry::Vacant(e) = self.tiles.entry(sw_corner) {
-            let tile = match self.load_tile(sw_corner) {
-                Ok(tile) => tile,
+        self.tiles
+            .entry(sw_corner)
+            .or_try_insert_with(|| match self.load_tile(sw_corner) {
+                Ok(tile) => Ok(Arc::new(tile)),
                 Err(TerrainError::Nasadem(NasademError::Io(e)))
                     if e.kind() == ErrorKind::NotFound =>
                 {
-                    self.load_tombstone(sw_corner)?
+                    Ok(Arc::new(self.load_tombstone(coord)))
                 }
-                Err(e) => return Err(e),
-            };
-            e.insert(Arc::new(tile));
-        };
-
-        Ok(self.tiles.get(&sw_corner).as_deref().cloned().unwrap())
+                Err(e) => Err(e),
+            })
+            .map(|r| r.clone())
     }
 }
 
@@ -85,10 +83,8 @@ impl TileSource {
         }
     }
 
-    fn load_tombstone(&self, sw_corner: Coord<i32>) -> Result<Tile, TerrainError> {
-        let file_name = file_name(sw_corner);
-        let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
-        Ok(Tile::tombstone(tile_path)?)
+    fn load_tombstone(&self, sw_corner: Coord<f64>) -> Tile {
+        Tile::tombstone(sw_corner)
     }
 }
 

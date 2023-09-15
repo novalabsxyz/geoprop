@@ -184,15 +184,7 @@ impl Tile {
         })
     }
 
-    pub fn tombstone<P: AsRef<Path>>(path: P) -> Result<Self, NasademError> {
-        let sw_corner = {
-            let Coord { x, y } = parse_sw_corner(&path)?;
-            Coord {
-                x: f64::from(x),
-                y: f64::from(y),
-            }
-        };
-
+    pub fn tombstone(sw_corner: Coord<f64>) -> Self {
         let (resolution, dimensions) = (3, (1201, 1201));
 
         let ne_corner = Coord {
@@ -204,7 +196,7 @@ impl Tile {
         let min_elev = sample_store.min_elev();
         let max_elev = sample_store.max_elev();
 
-        Ok(Self {
+        Self {
             sw_corner,
             ne_corner,
             resolution,
@@ -212,7 +204,7 @@ impl Tile {
             min_elev,
             max_elev,
             sample_store,
-        })
+        }
     }
 
     #[cfg(feature = "kml")]
