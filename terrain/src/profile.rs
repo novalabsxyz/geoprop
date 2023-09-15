@@ -26,8 +26,8 @@ impl Profile {
 
         let mut terrain = Vec::with_capacity(points.len());
         for point in points.iter() {
-            let maybe_tile = tiles.get(point.0)?;
-            let elevation = maybe_tile.and_then(|tile| tile.get(point.0)).unwrap_or(0);
+            let tile = tiles.get(point.0)?;
+            let elevation = tile.get_unchecked(point.0);
             terrain.push(elevation)
         }
 

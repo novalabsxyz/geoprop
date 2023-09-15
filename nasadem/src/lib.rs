@@ -57,6 +57,7 @@ pub struct Tile {
 }
 
 enum Storage {
+    Tombstone,
     InMem(Box<[i16]>),
     MemMap(Mmap),
 }
@@ -64,6 +65,7 @@ enum Storage {
 impl Storage {
     fn get_unchecked(&self, index: usize) -> i16 {
         match self {
+            Storage::Tombstone => 0,
             Storage::InMem(samples) => samples[index],
             Storage::MemMap(raw) => {
                 let start = index * size_of::<u16>();
@@ -77,6 +79,7 @@ impl Storage {
     /// Returns the lowest elevation sample in this data.
     fn min_elev(&self) -> i16 {
         match self {
+            Storage::Tombstone => 0,
             Storage::InMem(samples) => samples.iter().max().copied().unwrap(),
             Storage::MemMap(raw) => (*raw)
                 .chunks_exact(2)
@@ -89,6 +92,7 @@ impl Storage {
     /// Returns the highest elevation sample in this data.
     pub fn max_elev(&self) -> i16 {
         match self {
+            Storage::Tombstone => 0,
             Storage::InMem(samples) => samples.iter().max().copied().unwrap(),
             Storage::MemMap(raw) => (*raw)
                 .chunks_exact(2)
@@ -166,6 +170,37 @@ impl Tile {
             Storage::MemMap(mmap)
         };
 
+        let min_elev = sample_store.min_elev();
+        let max_elev = sample_store.max_elev();
+
+        Ok(Self {
+            sw_corner,
+            ne_corner,
+            resolution,
+            dimensions,
+            min_elev,
+            max_elev,
+            sample_store,
+        })
+    }
+
+    pub fn tombstone<P: AsRef<Path>>(path: P) -> Result<Self, NasademError> {
+        let sw_corner = {
+            let Coord { x, y } = parse_sw_corner(&path)?;
+            Coord {
+                x: f64::from(x),
+                y: f64::from(y),
+            }
+        };
+
+        let (resolution, dimensions) = (3, (1201, 1201));
+
+        let ne_corner = Coord {
+            y: sw_corner.y + (dimensions.0 as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
+            x: sw_corner.x + (dimensions.1 as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
+        };
+
+        let sample_store = Storage::Tombstone;
         let min_elev = sample_store.min_elev();
         let max_elev = sample_store.max_elev();
 

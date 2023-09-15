@@ -22,7 +22,7 @@ pub struct TileSource {
     ///
     /// Tiles are wrapped in an Option to differenctate between having
     /// never attempted to load it from disk vs not exisiting on disk.
-    tiles: DashMap<Coord<i32>, Option<Arc<Tile>>>,
+    tiles: DashMap<Coord<i32>, Arc<Tile>>,
 }
 
 impl TileSource {
@@ -55,22 +55,22 @@ impl TileSource {
     ///
     /// This TileSource will attempt to load the tile from disk if it
     /// doesn't already have it in memory.
-    pub fn get(&self, coord: Coord<f64>) -> Result<Option<Arc<Tile>>, TerrainError> {
+    pub fn get(&self, coord: Coord<f64>) -> Result<Arc<Tile>, TerrainError> {
         let sw_corner = sw_corner(coord);
         if let Entry::Vacant(e) = self.tiles.entry(sw_corner) {
             let tile = match self.load_tile(sw_corner) {
-                Ok(tile) => Some(Arc::new(tile)),
+                Ok(tile) => tile,
                 Err(TerrainError::Nasadem(NasademError::Io(e)))
                     if e.kind() == ErrorKind::NotFound =>
                 {
-                    None
+                    self.load_tombstone(sw_corner)?
                 }
                 Err(e) => return Err(e),
             };
-            e.insert(tile);
+            e.insert(Arc::new(tile));
         };
 
-        Ok(self.tiles.get(&sw_corner).as_deref().cloned().flatten())
+        Ok(self.tiles.get(&sw_corner).as_deref().cloned().unwrap())
     }
 }
 
@@ -83,6 +83,12 @@ impl TileSource {
             TileMode::InMem => Ok(Tile::load(tile_path)?),
             TileMode::MemMap => Ok(Tile::memmap(tile_path)?),
         }
+    }
+
+    fn load_tombstone(&self, sw_corner: Coord<i32>) -> Result<Tile, TerrainError> {
+        let file_name = file_name(sw_corner);
+        let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
+        Ok(Tile::tombstone(tile_path)?)
     }
 }
 
@@ -144,15 +150,17 @@ mod tests {
     const SOUTH_POLE: Coord = Coord { y: -90.0, x: 0.0 };
 
     #[test]
-    fn test_get_invalid() {
+    fn test_missing_tile_returns_0() {
         let tile_src = TileSource::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
-        assert!(tile_src.get(SOUTH_POLE).unwrap().is_none());
+        let tile = tile_src.get(SOUTH_POLE).unwrap();
+        let elevation = tile.get(SOUTH_POLE).unwrap();
+        assert_eq!(elevation, 0);
     }
 
     #[test]
     fn test_get() {
         let tile_src = TileSource::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
-        let tile = tile_src.get(MT_WASHINGTON).unwrap().unwrap();
+        let tile = tile_src.get(MT_WASHINGTON).unwrap();
         assert_eq!(tile.get_unchecked(MT_WASHINGTON), 1903);
     }
 
