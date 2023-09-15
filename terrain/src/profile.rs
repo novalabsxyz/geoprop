@@ -1,6 +1,6 @@
 use crate::{TerrainError, TileSource};
 use geo::{
-    algorithm::geodesic_intermediate::GeodesicIntermediate,
+    algorithm::haversine_intermediate::HaversineIntermediate,
     geometry::{Coord, Point},
 };
 
@@ -17,7 +17,7 @@ impl Profile {
         end: Coord<f64>,
         tiles: &TileSource,
     ) -> Result<Self, TerrainError> {
-        let points = GeodesicIntermediate::geodesic_intermediate_fill(
+        let points = HaversineIntermediate::haversine_intermediate_fill(
             &Point::from(start),
             &Point::from(end),
             step_size_m,
