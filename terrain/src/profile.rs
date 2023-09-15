@@ -25,10 +25,15 @@ impl Profile {
         );
 
         let mut terrain = Vec::with_capacity(points.len());
+        let mut tile = tiles.get(start)?;
         for point in points.iter() {
-            let tile = tiles.get(point.0)?;
-            let elevation = tile.get_unchecked(point.0);
-            terrain.push(elevation)
+            if let Some(elevation) = tile.get(point.0) {
+                terrain.push(elevation)
+            } else {
+                tile = tiles.get(point.0)?;
+                let elevation = tile.get_unchecked(point.0);
+                terrain.push(elevation);
+            }
         }
 
         Ok(Self { points, terrain })
