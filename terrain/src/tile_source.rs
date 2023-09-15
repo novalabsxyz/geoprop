@@ -10,9 +10,14 @@ use std::{
     sync::Arc,
 };
 
+#[derive(Clone)]
 pub struct TileSource {
     /// Directory containing NASADEM HGT tile files.
     tile_dir: PathBuf,
+
+    /// How to load tiles (in-memory or mapped).
+    tile_mode: TileMode,
+
     /// Tiles which have been loaded on demand.
     ///
     /// Tiles are wrapped in an Option to differenctate between having
@@ -21,9 +26,11 @@ pub struct TileSource {
 }
 
 impl TileSource {
-    pub fn new(tile_dir: PathBuf) -> Result<Self, TerrainError> {
+    pub fn new(tile_dir: PathBuf, tile_mode: TileMode) -> Result<Self, TerrainError> {
         let mut has_height_files = false;
 
+        // Let's try to fail early be checking that tile_dir has at
+        // least one `hgt` file.
         for entry in std::fs::read_dir(&tile_dir)? {
             let path = entry?.path();
             if Some("hgt") == path.extension().and_then(|ext| ext.to_str()) {
@@ -34,7 +41,11 @@ impl TileSource {
 
         if has_height_files {
             let tiles = DashMap::new();
-            Ok(Self { tile_dir, tiles })
+            Ok(Self {
+                tile_dir,
+                tile_mode,
+                tiles,
+            })
         } else {
             Err(TerrainError::Path(tile_dir))
         }
@@ -47,20 +58,49 @@ impl TileSource {
     pub fn get(&self, coord: Coord<f64>) -> Result<Option<Arc<Tile>>, TerrainError> {
         let sw_corner = sw_corner(coord);
         if let Entry::Vacant(e) = self.tiles.entry(sw_corner) {
-            let tile = {
-                let file_name = file_name(sw_corner);
-                let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
-                match Tile::parse(tile_path) {
-                    Ok(tile) => Some(Arc::new(tile)),
-                    Err(NasademError::Io(e)) if e.kind() == ErrorKind::NotFound => None,
-                    Err(e) => return Err(TerrainError::Nasadem(e)),
+            let tile = match self.load_tile(sw_corner) {
+                Ok(tile) => Some(Arc::new(tile)),
+                Err(TerrainError::Nasadem(NasademError::Io(e)))
+                    if e.kind() == ErrorKind::NotFound =>
+                {
+                    None
                 }
+                Err(e) => return Err(e),
             };
             e.insert(tile);
         };
 
         Ok(self.tiles.get(&sw_corner).as_deref().cloned().flatten())
     }
+}
+
+impl TileSource {
+    fn load_tile(&self, sw_corner: Coord<i32>) -> Result<Tile, TerrainError> {
+        let file_name = file_name(sw_corner);
+        let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
+
+        match self.tile_mode {
+            TileMode::InMem => Ok(Tile::load(tile_path)?),
+            TileMode::MemMap => Ok(Tile::memmap(tile_path)?),
+        }
+    }
+}
+
+/// How to handle tile.
+///
+/// The trade off between loading tile data into memory versus memory
+/// mapping is not obvious, and you should measure both before
+/// deciding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TileMode {
+    /// Parse tile and load into memory.
+    ///
+    /// Note that this can consume gigabytes of RAM when loading many
+    /// tiles.
+    InMem,
+
+    /// Memory map file contents.
+    MemMap,
 }
 
 /// Returns the southwest corner as integers for coord.
@@ -94,7 +134,7 @@ fn file_name(Coord { x, y }: Coord<i32>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{file_name, sw_corner, Coord, TileSource};
+    use super::{file_name, sw_corner, Coord, TileMode, TileSource};
 
     const MT_WASHINGTON: Coord = Coord {
         y: 44.2705,
@@ -105,13 +145,13 @@ mod tests {
 
     #[test]
     fn test_get_invalid() {
-        let tile_src = TileSource::new(crate::three_arcsecond_dir()).unwrap();
+        let tile_src = TileSource::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
         assert!(tile_src.get(SOUTH_POLE).unwrap().is_none());
     }
 
     #[test]
     fn test_get() {
-        let tile_src = TileSource::new(crate::three_arcsecond_dir()).unwrap();
+        let tile_src = TileSource::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
         let tile = tile_src.get(MT_WASHINGTON).unwrap().unwrap();
         assert_eq!(tile.get_unchecked(MT_WASHINGTON), 1903);
     }

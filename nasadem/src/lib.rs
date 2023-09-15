@@ -57,15 +57,15 @@ pub struct Tile {
 }
 
 enum Storage {
-    Parsed(Box<[i16]>),
-    Mapped(Mmap),
+    InMem(Box<[i16]>),
+    MemMap(Mmap),
 }
 
 impl Storage {
     fn get_unchecked(&self, index: usize) -> i16 {
         match self {
-            Storage::Parsed(samples) => samples[index],
-            Storage::Mapped(raw) => {
+            Storage::InMem(samples) => samples[index],
+            Storage::MemMap(raw) => {
                 let start = index * size_of::<u16>();
                 let end = start + size_of::<u16>();
                 let bytes = &mut &raw.as_ref()[start..end];
@@ -77,8 +77,8 @@ impl Storage {
     /// Returns the lowest elevation sample in this data.
     fn min_elev(&self) -> i16 {
         match self {
-            Storage::Parsed(samples) => samples.iter().max().copied().unwrap(),
-            Storage::Mapped(raw) => (*raw)
+            Storage::InMem(samples) => samples.iter().max().copied().unwrap(),
+            Storage::MemMap(raw) => (*raw)
                 .chunks_exact(2)
                 .map(|mut bytes| (&mut bytes).read_i16::<BE>().unwrap())
                 .max()
@@ -89,8 +89,8 @@ impl Storage {
     /// Returns the highest elevation sample in this data.
     pub fn max_elev(&self) -> i16 {
         match self {
-            Storage::Parsed(samples) => samples.iter().max().copied().unwrap(),
-            Storage::Mapped(raw) => (*raw)
+            Storage::InMem(samples) => samples.iter().max().copied().unwrap(),
+            Storage::MemMap(raw) => (*raw)
                 .chunks_exact(2)
                 .map(|mut bytes| (&mut bytes).read_i16::<BE>().unwrap())
                 .max()
@@ -101,7 +101,7 @@ impl Storage {
 
 impl Tile {
     /// Returns a Tile read into memory from the file at `path`.
-    pub fn parse<P: AsRef<Path>>(path: P) -> Result<Self, NasademError> {
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, NasademError> {
         let (resolution, dimensions @ (cols, rows)) = extract_resolution(&path)?;
         let sw_corner = {
             let Coord { x, y } = parse_sw_corner(&path)?;
@@ -127,7 +127,7 @@ impl Tile {
             }
 
             assert_eq!(sample_store.len(), dimensions.0 * dimensions.1);
-            Storage::Parsed(sample_store.into_boxed_slice())
+            Storage::InMem(sample_store.into_boxed_slice())
         };
 
         let min_elev = sample_store.min_elev();
@@ -163,7 +163,7 @@ impl Tile {
         let sample_store = {
             let file = File::open(path)?;
             let mmap = unsafe { Mmap::map(&file)? };
-            Storage::Mapped(mmap)
+            Storage::MemMap(mmap)
         };
 
         let min_elev = sample_store.min_elev();
@@ -392,7 +392,7 @@ mod _1_arc_second {
     fn test_tile_open() {
         let mut path = one_arcsecond_dir();
         path.push("N44W072.hgt");
-        Tile::parse(path).unwrap();
+        Tile::load(path).unwrap();
     }
 
     #[test]
@@ -407,7 +407,7 @@ mod _1_arc_second {
             }
             file_data
         };
-        let parsed_tile = Tile::parse(&path).unwrap();
+        let parsed_tile = Tile::load(&path).unwrap();
         let mapped_tile = Tile::memmap(&path).unwrap();
         let mut idx = 0;
         for row in (0..3601).rev() {
@@ -423,7 +423,7 @@ mod _1_arc_second {
     fn test_tile_geo_index() {
         let mut path = one_arcsecond_dir();
         path.push("N44W072.hgt");
-        let tile = Tile::parse(&path).unwrap();
+        let tile = Tile::load(&path).unwrap();
         let mt_washington = Coord {
             y: 44.2705,
             x: -71.30325,
@@ -435,7 +435,7 @@ mod _1_arc_second {
     fn test_tile_index_conversions() {
         let mut path = one_arcsecond_dir();
         path.push("N44W072.hgt");
-        let tile = Tile::parse(&path).unwrap();
+        let tile = Tile::load(&path).unwrap();
         for row in (0..3601).rev() {
             for col in 0..3601 {
                 let _1d = tile.xy_to_linear_index((col, row));
@@ -484,14 +484,14 @@ mod _3_arc_second {
     fn test_tile_open() {
         let mut path = three_arcsecond_dir();
         path.push("N44W072.hgt");
-        Tile::parse(path).unwrap();
+        Tile::load(path).unwrap();
     }
 
     #[test]
     fn test_tile_index() {
         let mut path = three_arcsecond_dir();
         path.push("N44W072.hgt");
-        let tile = Tile::parse(&path).unwrap();
+        let tile = Tile::load(&path).unwrap();
         let raw_file_samples = {
             let mut file_data = Vec::new();
             let mut file = BufReader::new(File::open(path).unwrap());
@@ -527,7 +527,7 @@ mod _3_arc_second {
     fn test_tile_index_conversions() {
         let mut path = three_arcsecond_dir();
         path.push("N44W072.hgt");
-        let parsed_tile = Tile::parse(&path).unwrap();
+        let parsed_tile = Tile::load(&path).unwrap();
         for row in (0..1201).rev() {
             for col in 0..1201 {
                 let _1d = parsed_tile.xy_to_linear_index((col, row));
@@ -541,7 +541,7 @@ mod _3_arc_second {
     fn test_xy_to_polygon() {
         let mut path = three_arcsecond_dir();
         path.push("N44W072.hgt");
-        let parsed_tile = Tile::parse(&path).unwrap();
+        let parsed_tile = Tile::load(&path).unwrap();
         assert_eq!(
             parsed_tile.xy_to_polygon((0, 0)),
             Polygon::new(
@@ -563,7 +563,7 @@ mod _3_arc_second {
         let kml_doc = {
             let mut path = three_arcsecond_dir();
             path.push("N44W072.hgt");
-            let parsed_tile = Tile::parse(&path).unwrap();
+            let parsed_tile = Tile::load(&path).unwrap();
             let elements = parsed_tile.to_kml();
             Kml::KmlDocument(KmlDocument {
                 version: KmlVersion::V22,

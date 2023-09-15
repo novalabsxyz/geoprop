@@ -13,13 +13,14 @@ pub struct Profile {
 impl Profile {
     pub fn new(
         start: Coord<f64>,
+        step_size_m: f64,
         end: Coord<f64>,
         tiles: &TileSource,
     ) -> Result<Self, TerrainError> {
         let points = GeodesicIntermediate::geodesic_intermediate_fill(
             &Point::from(start),
             &Point::from(end),
-            30.0,
+            step_size_m,
             true,
         );
 
@@ -37,6 +38,7 @@ impl Profile {
 #[cfg(test)]
 mod tests {
     use super::{Coord, Point, Profile, TileSource};
+    use crate::TileMode;
     use plotters::prelude::*;
     use std::path::Path;
 
@@ -97,8 +99,31 @@ mod tests {
             y: 44.25628098424278,
         };
 
-        let tile_source = TileSource::new(crate::three_arcsecond_dir()).unwrap();
-        let profile = Profile::new(start, end, &tile_source).unwrap();
+        let tile_source = TileSource::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
+
+        let now = std::time::Instant::now();
+        let _90m = 90.0;
+        let mut profile = Profile::new(start, _90m, end, &tile_source).unwrap();
+        let duration = now.elapsed();
+        println!(
+            "[01] mt washington profile, len: {}, duration: {:?}",
+            profile.terrain.len(),
+            duration
+        );
+
+        for i in 2..11 {
+            let now = std::time::Instant::now();
+            let _90m = 90.0;
+            profile = Profile::new(start, _90m, end, &tile_source).unwrap();
+            let duration = now.elapsed();
+            println!(
+                "[{:02}] mt washington profile, len: {}, duration: {:?}",
+                i,
+                profile.terrain.len(),
+                duration
+            );
+        }
+
         profile.plot("/tmp/path.png");
     }
 
