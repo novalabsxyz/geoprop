@@ -7,18 +7,20 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-byteorder = "1.4.3"
-clap      = { version = "4.4.2", features = ["derive"] }
-dashmap   = "5.5.3"
-geo       = "0.26.0"
-h3o       = { version = "0.4.0", features = ["geo"] }
-hextree   = "0.3.1"
-indicatif = "0.17.6"
-kml       = "0.8.3"
-memmap2   = "0.7.1"
-plotters  = "0.3.5"
-rayon     = "1.7.0"
-thiserror = "1.0.48"
+assert_approx_eq = "1.1.0"
+byteorder        = "1.4.3"
+clap             = { version = "4.4.2", features = ["derive"] }
+criterion        = { version = "0.5", features = ["html_reports"] }
+dashmap          = "5.5.3"
+geo              = "0.26.0"
+h3o              = { version = "0.4.0", features = ["geo"] }
+hextree          = "0.3.1"
+indicatif        = "0.17.6"
+kml              = "0.8.3"
+memmap2          = "0.7.1"
+plotters         = "0.3.5"
+rayon            = "1.7.0"
+thiserror        = "1.0.48"
 
 # We want meaninful stack traces when profiling/debugging
 # benches/tests.
