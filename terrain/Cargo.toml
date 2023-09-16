@@ -10,4 +10,11 @@ nasadem   = { path = "../nasadem" }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+criterion = { version = "0.4", features = ["html_reports"] }
 plotters  = { workspace = true }
+[target.'cfg(not(target_env = "msvc"))'.dev-dependencies]
+tikv-jemallocator = "0.5"
+
+[[bench]]
+name = "benchmarks"
+harness = false
