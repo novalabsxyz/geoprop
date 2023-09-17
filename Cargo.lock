@@ -1498,6 +1498,7 @@ dependencies = [
  "dashmap",
  "geo",
  "nasadem",
+ "num-traits",
  "plotters",
  "thiserror",
  "tikv-jemallocator",

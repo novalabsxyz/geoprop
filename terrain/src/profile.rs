@@ -1,22 +1,31 @@
-use crate::{TerrainError, TileSource, C};
+use crate::{TerrainError, TileSource};
 use geo::{
     algorithm::haversine_intermediate::HaversineIntermediate,
     geometry::{Coord, Point},
+    CoordFloat,
 };
+use num_traits::cast::FromPrimitive;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Profile {
+pub struct Profile<C: CoordFloat = f32> {
     pub points: Vec<Point<C>>,
     pub terrain: Vec<i16>,
 }
 
-impl Profile {
+impl<C: CoordFloat> Profile<C> {
     pub fn new(
-        start: Coord<C>,
+        start @ Coord {
+            x: start_x,
+            y: start_y,
+        }: Coord<C>,
         step_size_m: C,
         end: Coord<C>,
         tiles: &TileSource,
-    ) -> Result<Self, TerrainError> {
+    ) -> Result<Self, TerrainError>
+    where
+        C: FromPrimitive,
+        f64: From<C>,
+    {
         let points = HaversineIntermediate::haversine_intermediate_fill(
             &Point::from(start),
             &Point::from(end),
@@ -25,13 +34,20 @@ impl Profile {
         );
 
         let mut terrain = Vec::with_capacity(points.len());
-        let mut tile = tiles.get(start)?;
+        let mut tile = tiles.get(Coord {
+            x: start_x.into(),
+            y: start_y.into(),
+        })?;
         for point in points.iter() {
-            if let Some(elevation) = tile.get(point.0) {
+            let coord = Coord {
+                x: point.0.x.into(),
+                y: point.0.y.into(),
+            };
+            if let Some(elevation) = tile.get(coord) {
                 terrain.push(elevation)
             } else {
-                tile = tiles.get(point.0)?;
-                let elevation = tile.get_unchecked(point.0);
+                tile = tiles.get(coord)?;
+                let elevation = tile.get_unchecked(coord);
                 terrain.push(elevation);
             }
         }
@@ -42,6 +58,8 @@ impl Profile {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::excessive_precision)]
+
     use super::{Coord, Point, Profile, TileSource};
     use crate::TileMode;
     use plotters::prelude::*;

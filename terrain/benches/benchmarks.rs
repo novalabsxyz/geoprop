@@ -1,7 +1,9 @@
+#![allow(clippy::excessive_precision)]
+
 use assert_approx_eq::assert_approx_eq;
 use criterion::{criterion_group, criterion_main, Criterion};
 use geo::{
-    algorithm::vincenty_distance::VincentyDistance,
+    algorithm::VincentyDistance,
     coord,
     geometry::{Coord, Point},
 };
@@ -22,7 +24,7 @@ fn three_arcsecond_dir() -> std::path::PathBuf {
     PathBuf::from(three_arcsecond_dir_str)
 }
 
-fn distance(start: Coord<f64>, end: Coord<f64>) -> f64 {
+fn distance(start: Coord<f32>, end: Coord<f32>) -> f32 {
     Point(start).vincenty_distance(&end.into()).unwrap()
 }
 
@@ -32,22 +34,22 @@ fn memmap_terrain_profile(c: &mut Criterion) {
     let mut group = c.benchmark_group("Terrain Profile - MemMap");
 
     let _2_4km @ (start, end) = (
-        coord!(x:-117.3519964316712, y:52.30693919915002),
-        coord!(x:-117.3165476765753, y:52.30866462880422),
+        coord!(x:-117.3519964316712f32, y:52.30693919915002f32),
+        coord!(x:-117.3165476765753f32, y:52.30866462880422f32),
     );
-    assert_approx_eq!(2.4254282742170944e3, distance(start, end));
+    assert_approx_eq!(2425.2756, distance(start, end));
 
     let _67km @ (start, end) = (
-        coord!(x:22.02060050752248, y:17.32531643138395),
-        coord!(x:22.6498898241764, y:17.31391991428638),
+        coord!(x:22.02060050752248f32, y:17.32531643138395f32),
+        coord!(x:22.6498898241764f32, y:17.31391991428638f32),
     );
-    assert_approx_eq!(66.90763248696443e3, distance(start, end));
+    assert_approx_eq!(66907.47, distance(start, end));
 
     let _103km @ (start, end) = (
-        coord!(x:95.15915866746103, y:38.89938117857166),
-        coord!(x:94.615374082193, y:39.72746075951511),
+        coord!(x:95.15915866746103f32, y:38.89938117857166f32),
+        coord!(x:94.615374082193f32, y:39.72746075951511f32),
     );
-    assert_approx_eq!(103204.81565942978, distance(start, end));
+    assert_approx_eq!(103205.28, distance(start, end));
 
     // Distance between each elevation sample
     let _90m = 90.0;
