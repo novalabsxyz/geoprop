@@ -8,6 +8,8 @@ pub use crate::{
     tile_source::{TileMode, TileSource},
 };
 
+pub type C = f64;
+
 #[cfg(test)]
 fn three_arcsecond_dir() -> std::path::PathBuf {
     [

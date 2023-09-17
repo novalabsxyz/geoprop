@@ -1,6 +1,6 @@
 //! NASADEM file aggregator.
 
-use crate::TerrainError;
+use crate::{TerrainError, C};
 use dashmap::DashMap;
 use geo::geometry::Coord;
 use nasadem::{NasademError, Tile};
@@ -55,7 +55,7 @@ impl TileSource {
     ///
     /// This TileSource will attempt to load the tile from disk if it
     /// doesn't already have it in memory.
-    pub fn get(&self, coord: Coord<f64>) -> Result<Arc<Tile>, TerrainError> {
+    pub fn get(&self, coord: Coord<C>) -> Result<Arc<Tile>, TerrainError> {
         let sw_corner = sw_corner(coord);
         self.tiles
             .entry(sw_corner)
@@ -83,7 +83,7 @@ impl TileSource {
         }
     }
 
-    fn load_tombstone(&self, sw_corner: Coord<f64>) -> Tile {
+    fn load_tombstone(&self, sw_corner: Coord<C>) -> Tile {
         Tile::tombstone(sw_corner)
     }
 }
@@ -106,7 +106,7 @@ pub enum TileMode {
 }
 
 /// Returns the southwest corner as integers for coord.
-fn sw_corner(Coord { x, y }: Coord<f64>) -> Coord<i32> {
+fn sw_corner(Coord { x, y }: Coord<C>) -> Coord<i32> {
     Coord {
         x: (x.floor() as i32),
         y: (y.floor() as i32),

@@ -26,19 +26,21 @@ use kml::{
 use memmap2::Mmap;
 use std::{fs::File, io::BufReader, mem::size_of, path::Path};
 
-const ARCSEC_PER_DEG: f64 = 3600.0;
-const HALF_ARCSEC: f64 = 1.0 / (2.0 * 3600.0);
+pub type C = f64;
+
+const ARCSEC_PER_DEG: C = 3600.0;
+const HALF_ARCSEC: C = 1.0 / (2.0 * 3600.0);
 
 pub struct Tile {
     /// Southwest corner of the tile.
     ///
     /// Specificlly, the _center_ of the SW most sample of the tile.
-    sw_corner: Coord<f64>,
+    sw_corner: Coord<C>,
 
     /// Northeast corner of the tile.
     ///
     /// Specificlly, the _center_ of the NE most sample of the tile.
-    ne_corner: Coord<f64>,
+    ne_corner: Coord<C>,
 
     /// Arcseconds per sample.
     resolution: u8,
@@ -110,14 +112,14 @@ impl Tile {
         let sw_corner = {
             let Coord { x, y } = parse_sw_corner(&path)?;
             Coord {
-                x: f64::from(x),
-                y: f64::from(y),
+                x: C::from(x),
+                y: C::from(y),
             }
         };
 
         let ne_corner = Coord {
-            y: sw_corner.y + (dimensions.0 as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
-            x: sw_corner.x + (dimensions.1 as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
+            y: sw_corner.y + (dimensions.0 as C * C::from(resolution)) / ARCSEC_PER_DEG,
+            x: sw_corner.x + (dimensions.1 as C * C::from(resolution)) / ARCSEC_PER_DEG,
         };
 
         let mut file = BufReader::new(File::open(path)?);
@@ -154,14 +156,14 @@ impl Tile {
         let sw_corner = {
             let Coord { x, y } = parse_sw_corner(&path)?;
             Coord {
-                x: f64::from(x),
-                y: f64::from(y),
+                x: C::from(x),
+                y: C::from(y),
             }
         };
 
         let ne_corner = Coord {
-            y: sw_corner.y + (cols as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
-            x: sw_corner.x + (rows as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
+            y: sw_corner.y + (cols as C * C::from(resolution)) / ARCSEC_PER_DEG,
+            x: sw_corner.x + (rows as C * C::from(resolution)) / ARCSEC_PER_DEG,
         };
 
         let sample_store = {
@@ -184,12 +186,12 @@ impl Tile {
         })
     }
 
-    pub fn tombstone(sw_corner: Coord<f64>) -> Self {
+    pub fn tombstone(sw_corner: Coord<C>) -> Self {
         let (resolution, dimensions) = (3, (1201, 1201));
 
         let ne_corner = Coord {
-            y: sw_corner.y + (dimensions.0 as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
-            x: sw_corner.x + (dimensions.1 as f64 * f64::from(resolution)) / ARCSEC_PER_DEG,
+            y: sw_corner.y + (dimensions.0 as C * C::from(resolution)) / ARCSEC_PER_DEG,
+            x: sw_corner.x + (dimensions.1 as C * C::from(resolution)) / ARCSEC_PER_DEG,
         };
 
         let sample_store = Storage::Tombstone;
@@ -231,7 +233,7 @@ impl Tile {
     }
 
     /// Returns the sample at the given geo coordinates.
-    pub fn get(&self, coord: Coord) -> Option<i16> {
+    pub fn get(&self, coord: Coord<C>) -> Option<i16> {
         let _2d_idx @ (idx_x, idx_y) = self.coord_to_xy(coord);
         if idx_x < self.dimensions.0 && idx_y < self.dimensions.1 {
             let _1d_idx = self.xy_to_linear_index(_2d_idx);
@@ -242,7 +244,7 @@ impl Tile {
     }
 
     /// Returns the sample at the given geo coordinates.
-    pub fn get_unchecked(&self, coord: Coord) -> i16 {
+    pub fn get_unchecked(&self, coord: Coord<C>) -> i16 {
         let _2d_idx = self.coord_to_xy(coord);
         let _1d_idx = self.xy_to_linear_index(_2d_idx);
         self.sample_store.get_unchecked(_1d_idx)
@@ -264,8 +266,8 @@ impl Tile {
         self.sample_store.get_unchecked(_1d_idx)
     }
 
-    fn coord_to_xy(&self, coord: Coord<f64>) -> (usize, usize) {
-        let c = ARCSEC_PER_DEG / f64::from(self.resolution);
+    fn coord_to_xy(&self, coord: Coord<C>) -> (usize, usize) {
+        let c = ARCSEC_PER_DEG / C::from(self.resolution);
         // TODO: do we need to compensate for cell width. If so, does
         //       the following accomplish that? It seems to in the
         //       Mt. Washington test.
@@ -286,17 +288,17 @@ impl Tile {
         self.dimensions.0 * (self.dimensions.1 - y - 1) + x
     }
 
-    fn xy_to_polygon(&self, (x, y): (usize, usize)) -> Polygon<f64> {
+    fn xy_to_polygon(&self, (x, y): (usize, usize)) -> Polygon<C> {
         let center = Coord {
-            x: self.sw_corner.x + (y as f64 * f64::from(self.resolution)) / ARCSEC_PER_DEG,
-            y: self.sw_corner.y + (x as f64 * f64::from(self.resolution)) / ARCSEC_PER_DEG,
+            x: self.sw_corner.x + (y as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
+            y: self.sw_corner.y + (x as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
         };
-        polygon(&center, f64::from(self.resolution))
+        polygon(&center, C::from(self.resolution))
     }
 }
 
 /// Generate a `res`-arcsecond square around `center`.
-fn polygon(center: &Coord<f64>, res: f64) -> Polygon<f64> {
+fn polygon(center: &Coord<C>, res: C) -> Polygon<C> {
     let delta = res * HALF_ARCSEC;
     let n = center.y + delta;
     let e = center.x + delta;
@@ -333,7 +335,7 @@ impl<'a> Sample<'a> {
     #[cfg(feature = "kml")]
     pub fn to_kml(&self) -> KmlPolygon {
         let geo_poly = self.polygon();
-        let outer_ring_coords: Vec<KmlCoord<f64>> = geo_poly
+        let outer_ring_coords: Vec<KmlCoord<C>> = geo_poly
             .exterior()
             .coords()
             .map(|Coord { x, y }| KmlCoord {

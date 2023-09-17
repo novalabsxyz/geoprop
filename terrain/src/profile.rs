@@ -1,4 +1,4 @@
-use crate::{TerrainError, TileSource};
+use crate::{TerrainError, TileSource, C};
 use geo::{
     algorithm::haversine_intermediate::HaversineIntermediate,
     geometry::{Coord, Point},
@@ -6,15 +6,15 @@ use geo::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Profile {
-    pub points: Vec<Point<f64>>,
+    pub points: Vec<Point<C>>,
     pub terrain: Vec<i16>,
 }
 
 impl Profile {
     pub fn new(
-        start: Coord<f64>,
-        step_size_m: f64,
-        end: Coord<f64>,
+        start: Coord<C>,
+        step_size_m: C,
+        end: Coord<C>,
         tiles: &TileSource,
     ) -> Result<Self, TerrainError> {
         let points = HaversineIntermediate::haversine_intermediate_fill(
