@@ -60,10 +60,10 @@ impl<C: CoordFloat> Profile<C> {
 mod tests {
     #![allow(clippy::excessive_precision)]
 
-    use super::{Coord, Point, Profile, TileSource};
+    use super::{Coord, CoordFloat, Point, Profile, TileSource};
     use crate::TileMode;
     use plotters::prelude::*;
-    use std::path::Path;
+    use std::{fmt::Display, path::Path};
 
     /// ```xml
     /// <?xml version="1.0" encoding="UTF-8"?>
@@ -147,24 +147,27 @@ mod tests {
             );
         }
 
-        profile.plot("/tmp/path.png");
+        profile.plot("/tmp/path.svg");
     }
 
-    impl Profile {
-        pub fn plot<P: AsRef<Path>>(&self, path: P) {
-            let root = BitMapBackend::new(&path, (1024, 500)).into_drawing_area();
+    impl<C: CoordFloat> Profile<C> {
+        pub fn plot<P: AsRef<Path>>(&self, path: P)
+        where
+            C: Display,
+        {
+            let root = SVGBackend::new(&path, (1400, 700)).into_drawing_area();
             root.fill(&WHITE).unwrap();
             let Point(Coord {
                 x: start_x,
                 y: start_y,
             }) = self.points.first().unwrap();
             let Point(Coord { x: end_x, y: end_y }) = self.points.first().unwrap();
-            let caption = format!("{:6},{:6} to {:6},{:6}", start_y, start_x, end_x, end_y);
+            let caption = format!("({:6},{:6}) to ({:6},{:6})", start_y, start_x, end_y, end_x);
             let mut chart = ChartBuilder::on(&root)
-                .caption(caption, ("sans-serif", 12).into_font())
+                .caption(caption, ("sans-serif", 16).into_font())
                 .margin(5)
-                .x_label_area_size(30)
-                .y_label_area_size(30)
+                .x_label_area_size(40)
+                .y_label_area_size(40)
                 .build_cartesian_2d(
                     0f32..(self.terrain.len() as f32 * 30.0f32),
                     1300f32..2000f32,
