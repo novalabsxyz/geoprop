@@ -1,7 +1,7 @@
 [workspace]
 members = [
   "nasadem",
-  "hexonify",
+  "plot",
   "terrain",
 ]
 resolver = "2"
@@ -21,6 +21,7 @@ memmap2          = "0.7.1"
 num-traits       = "0.2.16"
 plotters         = "0.3.5"
 rayon            = "1.7.0"
+serde_json       = "1"
 thiserror        = "1.0.48"
 
 # We want meaninful stack traces when profiling/debugging
