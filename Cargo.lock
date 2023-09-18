@@ -1050,6 +1050,7 @@ dependencies = [
  "geo",
  "nasadem",
  "plotters",
+ "serde",
  "serde_json",
  "terrain",
 ]
