@@ -22,7 +22,7 @@ pub struct TileSource {
     ///
     /// Tiles are wrapped in an Option to differenctate between having
     /// never attempted to load it from disk vs not exisiting on disk.
-    tiles: DashMap<Coord<i32>, Arc<Tile>>,
+    tiles: DashMap<Coord<i16>, Arc<Tile>>,
 }
 
 impl TileSource {
@@ -73,7 +73,7 @@ impl TileSource {
 }
 
 impl TileSource {
-    fn load_tile(&self, sw_corner: Coord<i32>) -> Result<Tile, TerrainError> {
+    fn load_tile(&self, sw_corner: Coord<i16>) -> Result<Tile, TerrainError> {
         let file_name = file_name(sw_corner);
         let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
 
@@ -106,15 +106,15 @@ pub enum TileMode {
 }
 
 /// Returns the southwest corner as integers for coord.
-fn sw_corner(Coord { x, y }: Coord<C>) -> Coord<i32> {
+fn sw_corner(Coord { x, y }: Coord<C>) -> Coord<i16> {
     Coord {
-        x: (x.floor() as i32),
-        y: (y.floor() as i32),
+        x: (x.floor() as i16),
+        y: (y.floor() as i16),
     }
 }
 
 /// Returns the expected file name for coord
-fn file_name(Coord { x, y }: Coord<i32>) -> String {
+fn file_name(Coord { x, y }: Coord<i16>) -> String {
     let (n_s, lat) = {
         let lat = y.abs();
         let n_s = match y.is_positive() {
