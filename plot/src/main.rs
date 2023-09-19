@@ -8,18 +8,17 @@ use std::{io::Write, path::Path};
 use terrain::{Profile, TileMode, TileSource};
 use textplots::{Chart, Plot, Shape};
 
-const _90M: f64 = 90.0;
-
 fn main() -> Result<(), AnyError> {
     let Cli {
         srtm_dir,
+        step_size,
         start,
         dest,
         cmd,
     } = Cli::parse();
 
     let tile_src = TileSource::new(srtm_dir, TileMode::MemMap)?;
-    let terrain_profile = Profile::new(start.0, _90M, dest.0, &tile_src)?;
+    let terrain_profile = Profile::new(start.0, step_size, dest.0, &tile_src)?;
 
     match cmd {
         CliCmd::Display => display(terrain_profile),

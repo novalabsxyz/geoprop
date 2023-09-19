@@ -10,6 +10,10 @@ pub struct Cli {
     #[arg(short, long)]
     pub srtm_dir: PathBuf,
 
+    /// Path incremental step size.
+    #[arg(short = 'z', long, default_value_t = 90.0)]
+    pub step_size: f64,
+
     /// Start "lat,lon"
     #[arg(long)]
     pub start: LatLon,
