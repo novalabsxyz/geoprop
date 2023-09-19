@@ -28,7 +28,7 @@ pub struct LatLon(pub Coord<f64>);
 impl FromStr for LatLon {
     type Err = AnyError;
     fn from_str(s: &str) -> Result<Self, AnyError> {
-        let idx = s.find(",").ok_or(anyhow!("not a valid lat,lon pair"))?;
+        let idx = s.find(',').ok_or(anyhow!("not a valid lat,lon pair"))?;
         let (lat_str, lon_str) = {
             let (lat_str, lon_str) = s.split_at(idx);
             (lat_str, &lon_str[1..])
@@ -50,6 +50,6 @@ pub enum Command {
     /// Export an SVG.
     Plot {
         /// SVG file path.
-        out: PathBuf,
+        out: Option<PathBuf>,
     },
 }

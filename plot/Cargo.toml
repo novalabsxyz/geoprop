@@ -12,3 +12,4 @@ plotters   = { workspace = true }
 serde      = { workspace = true }
 serde_json = { workspace = true }
 terrain    = { path = "../terrain" }
+textplots  = { workspace = true }
