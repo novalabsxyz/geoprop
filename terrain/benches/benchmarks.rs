@@ -8,7 +8,7 @@ use geo::{
     geometry::{Coord, Point},
 };
 use std::{env, path::PathBuf};
-use terrain::{Profile, TileMode, TileSource};
+use terrain::{Profile, TileMode, Tiles};
 
 #[cfg(not(target_env = "msvc"))]
 use tikv_jemallocator::Jemalloc;
@@ -29,7 +29,7 @@ fn distance(start: Coord<f32>, end: Coord<f32>) -> f32 {
 }
 
 fn memmap_terrain_profile(c: &mut Criterion) {
-    let tile_source = TileSource::new(three_arcsecond_dir(), TileMode::MemMap).unwrap();
+    let tile_source = Tiles::new(three_arcsecond_dir(), TileMode::MemMap).unwrap();
 
     let mut group = c.benchmark_group("Terrain Profile - MemMap");
 

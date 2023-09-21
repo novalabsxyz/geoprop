@@ -11,7 +11,7 @@ use std::{
 };
 
 #[derive(Clone)]
-pub struct TileSource {
+pub struct Tiles {
     /// Directory containing NASADEM HGT tile files.
     tile_dir: PathBuf,
 
@@ -25,7 +25,7 @@ pub struct TileSource {
     tiles: DashMap<Coord<i16>, Arc<Tile>>,
 }
 
-impl TileSource {
+impl Tiles {
     pub fn new(tile_dir: PathBuf, tile_mode: TileMode) -> Result<Self, TerrainError> {
         let mut has_height_files = false;
 
@@ -72,7 +72,7 @@ impl TileSource {
     }
 }
 
-impl TileSource {
+impl Tiles {
     fn load_tile(&self, sw_corner: Coord<i16>) -> Result<Tile, TerrainError> {
         let file_name = file_name(sw_corner);
         let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
@@ -136,7 +136,7 @@ fn file_name(Coord { x, y }: Coord<i16>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{file_name, sw_corner, Coord, TileMode, TileSource};
+    use super::{file_name, sw_corner, Coord, TileMode, Tiles};
 
     const MT_WASHINGTON: Coord = Coord {
         y: 44.2705,
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn test_missing_tile_returns_0() {
-        let tile_src = TileSource::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
+        let tile_src = Tiles::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
         let tile = tile_src.get(SOUTH_POLE).unwrap();
         let elevation = tile.get(SOUTH_POLE).unwrap();
         assert_eq!(elevation, 0);
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let tile_src = TileSource::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
+        let tile_src = Tiles::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
         let tile = tile_src.get(MT_WASHINGTON).unwrap();
         assert_eq!(tile.get_unchecked(MT_WASHINGTON), 1903);
     }

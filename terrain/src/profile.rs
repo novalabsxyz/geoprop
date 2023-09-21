@@ -1,4 +1,4 @@
-use crate::{TerrainError, TileSource};
+use crate::{TerrainError, Tiles};
 use geo::{
     algorithm::haversine_intermediate::HaversineIntermediate,
     geometry::{Coord, Point},
@@ -20,7 +20,7 @@ impl<C: CoordFloat> Profile<C> {
         }: Coord<C>,
         step_size_m: C,
         end: Coord<C>,
-        tiles: &TileSource,
+        tiles: &Tiles,
     ) -> Result<Self, TerrainError>
     where
         C: FromPrimitive,
@@ -60,7 +60,7 @@ impl<C: CoordFloat> Profile<C> {
 mod tests {
     #![allow(clippy::excessive_precision)]
 
-    use super::{Coord, CoordFloat, Point, Profile, TileSource};
+    use super::{Coord, CoordFloat, Point, Profile, Tiles};
     use crate::TileMode;
     use plotters::prelude::*;
     use std::{fmt::Display, path::Path};
@@ -122,7 +122,7 @@ mod tests {
             y: 44.25628098424278,
         };
 
-        let tile_source = TileSource::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
+        let tile_source = Tiles::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
 
         let now = std::time::Instant::now();
         let _90m = 90.0;

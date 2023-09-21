@@ -5,7 +5,7 @@ use clap::Parser;
 use options::{Cli, Command as CliCmd};
 use serde::Serialize;
 use std::{io::Write, path::Path};
-use terrain::{Profile, TileMode, TileSource};
+use terrain::{Profile, TileMode, Tiles};
 use textplots::{Chart, Plot, Shape};
 
 fn main() -> Result<(), AnyError> {
@@ -17,7 +17,7 @@ fn main() -> Result<(), AnyError> {
         cmd,
     } = Cli::parse();
 
-    let tile_src = TileSource::new(srtm_dir, TileMode::MemMap)?;
+    let tile_src = Tiles::new(srtm_dir, TileMode::MemMap)?;
     let terrain_profile = Profile::new(start.0, step_size, dest.0, &tile_src)?;
 
     match cmd {

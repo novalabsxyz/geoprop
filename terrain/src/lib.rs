@@ -1,11 +1,11 @@
 mod error;
 mod profile;
-mod tile_source;
+mod tiles;
 
 pub use crate::{
     error::TerrainError,
     profile::Profile,
-    tile_source::{TileMode, TileSource},
+    tiles::{TileMode, Tiles},
 };
 
 pub type C = f64;
