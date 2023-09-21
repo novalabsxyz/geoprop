@@ -29,7 +29,7 @@ use std::{
     io::BufReader,
     mem::size_of,
     path::Path,
-    sync::atomic::{AtomicI16, Ordering}, ops::Deref,
+    sync::atomic::{AtomicI16, Ordering},
 };
 
 pub type C = f64;
@@ -55,10 +55,10 @@ pub struct Tile {
     dimensions: (usize, usize),
 
     /// Lowest elevation sample in this tile.
-    min_elev: AtomicI16,
+    min_elevation: AtomicI16,
 
     /// Highest elevation sample in this tile.
-    max_elev: AtomicI16,
+    max_elevation: AtomicI16,
 
     /// Elevation samples.
     sample_store: Storage,
@@ -85,7 +85,7 @@ impl Storage {
     }
 
     /// Returns the lowest elevation sample in this data.
-    fn min_elev(&self) -> i16 {
+    fn min(&self) -> i16 {
         match self {
             Storage::Tombstone => 0,
             Storage::InMem(samples) => samples.iter().max().copied().unwrap(),
@@ -98,7 +98,7 @@ impl Storage {
     }
 
     /// Returns the highest elevation sample in this data.
-    pub fn max_elev(&self) -> i16 {
+    pub fn max(&self) -> i16 {
         match self {
             Storage::Tombstone => 0,
             Storage::InMem(samples) => samples.iter().max().copied().unwrap(),
@@ -142,16 +142,16 @@ impl Tile {
             Storage::InMem(sample_store.into_boxed_slice())
         };
 
-        let min_elev = i16::MAX.into();
-        let max_elev = i16::MAX.into();
+        let min_elevation = i16::MAX.into();
+        let max_elevation = i16::MAX.into();
 
         Ok(Self {
             sw_corner,
             ne_corner,
             resolution,
             dimensions,
-            min_elev,
-            max_elev,
+            min_elevation,
+            max_elevation,
             sample_store,
         })
     }
@@ -178,16 +178,16 @@ impl Tile {
             Storage::MemMap(mmap)
         };
 
-        let min_elev = i16::MAX.into();
-        let max_elev = i16::MAX.into();
+        let min_elevation = i16::MAX.into();
+        let max_elevation = i16::MAX.into();
 
         Ok(Self {
             sw_corner,
             ne_corner,
             resolution,
             dimensions,
-            min_elev,
-            max_elev,
+            min_elevation,
+            max_elevation,
             sample_store,
         })
     }
@@ -201,16 +201,16 @@ impl Tile {
         };
 
         let sample_store = Storage::Tombstone;
-        let min_elev = i16::MAX.into();
-        let max_elev = i16::MAX.into();
+        let min_elevation = i16::MAX.into();
+        let max_elevation = i16::MAX.into();
 
         Self {
             sw_corner,
             ne_corner,
             resolution,
             dimensions,
-            min_elev,
-            max_elev,
+            min_elevation,
+            max_elevation,
             sample_store,
         }
     }
@@ -224,23 +224,23 @@ impl Tile {
     }
 
     /// Returns the lowest elevation sample in this tile.
-    pub fn min_elev(&self) -> i16 {
-        let mut min_elev = self.min_elev.load(Ordering::Relaxed);
-        if min_elev == i16::MAX {
-            min_elev = self.sample_store.min_elev();
-            self.min_elev.store(min_elev, Ordering::SeqCst);
+    pub fn min_elevation(&self) -> i16 {
+        let mut min_elevation = self.min_elevation.load(Ordering::Relaxed);
+        if min_elevation == i16::MAX {
+            min_elevation = self.sample_store.min();
+            self.min_elevation.store(min_elevation, Ordering::SeqCst);
         };
-        min_elev
+        min_elevation
     }
 
     /// Returns the highest elevation sample in this tile.
-    pub fn max_elev(&self) -> i16 {
-        let mut max_elev = self.max_elev.load(Ordering::Relaxed);
-        if max_elev == i16::MAX {
-            max_elev = self.sample_store.max_elev();
-            self.max_elev.store(max_elev, Ordering::SeqCst);
+    pub fn max_elevation(&self) -> i16 {
+        let mut max_elevation = self.max_elevation.load(Ordering::Relaxed);
+        if max_elevation == i16::MAX {
+            max_elevation = self.sample_store.max();
+            self.max_elevation.store(max_elevation, Ordering::SeqCst);
         };
-        max_elev
+        max_elevation
     }
 
     /// Rreturns this tile's resolution in arcseconds per sample.
@@ -268,10 +268,7 @@ impl Tile {
 
     /// Returns and iterator over `self`'s grid squares.
     pub fn iter(&self) -> impl Iterator<Item = Sample<'_>> + '_ {
-        (0..(self.dimensions.0 * self.dimensions.1)).map(|index| Sample {
-            parent: self,
-            index,
-        })
+        (0..(self.dimensions.0 * self.dimensions.1)).map(|index| Sample { tile: self, index })
     }
 }
 
@@ -331,8 +328,8 @@ fn polygon(center: &Coord<C>, res: C) -> Polygon<C> {
 
 /// A NASADEM elevation sample.
 pub struct Sample<'a> {
-    /// The parent [Hgt] this grid square belongs to.
-    parent: &'a Tile,
+    /// The parent [Tile] this grid square belongs to.
+    tile: &'a Tile,
     /// Index into parent's evelation data corresponding to tbhis grid
     /// square.
     index: usize,
@@ -340,12 +337,12 @@ pub struct Sample<'a> {
 
 impl<'a> Sample<'a> {
     pub fn elevation(&self) -> i16 {
-        self.parent.sample_store.get_unchecked(self.index)
+        self.tile.sample_store.get_unchecked(self.index)
     }
 
     pub fn polygon(&self) -> Polygon {
-        self.parent
-            .xy_to_polygon(self.parent.linear_index_to_xy(self.index))
+        self.tile
+            .xy_to_polygon(self.tile.linear_index_to_xy(self.index))
     }
 
     #[cfg(feature = "kml")]
@@ -473,7 +470,7 @@ mod _1_arc_second {
             y: 44.2705,
             x: -71.30325,
         };
-        assert_eq!(tile.get_unchecked(mt_washington), tile.max_elev());
+        assert_eq!(tile.get_unchecked(mt_washington), tile.max_elevation());
     }
 
     #[test]
@@ -565,7 +562,7 @@ mod _3_arc_second {
     //     };
     //     // TODO: is there an error in indexing or is the 3 arc-second
     //     //       dataset smeared?
-    //     assert_eq!(tile.get_coord(mt_washington), tile.max_elev());
+    //     assert_eq!(tile.get_coord(mt_washington), tile.max_elevation());
     // }
 
     #[test]
