@@ -24,7 +24,13 @@ use kml::{
     Kml,
 };
 use memmap2::Mmap;
-use std::{fs::File, io::BufReader, mem::size_of, path::Path};
+use std::{
+    fs::File,
+    io::BufReader,
+    mem::size_of,
+    path::Path,
+    sync::atomic::{AtomicI16, Ordering}, ops::Deref,
+};
 
 pub type C = f64;
 
@@ -49,10 +55,10 @@ pub struct Tile {
     dimensions: (usize, usize),
 
     /// Lowest elevation sample in this tile.
-    min_elev: i16,
+    min_elev: AtomicI16,
 
     /// Highest elevation sample in this tile.
-    max_elev: i16,
+    max_elev: AtomicI16,
 
     /// Elevation samples.
     sample_store: Storage,
@@ -136,8 +142,8 @@ impl Tile {
             Storage::InMem(sample_store.into_boxed_slice())
         };
 
-        let min_elev = sample_store.min_elev();
-        let max_elev = sample_store.max_elev();
+        let min_elev = i16::MAX.into();
+        let max_elev = i16::MAX.into();
 
         Ok(Self {
             sw_corner,
@@ -172,8 +178,8 @@ impl Tile {
             Storage::MemMap(mmap)
         };
 
-        let min_elev = sample_store.min_elev();
-        let max_elev = sample_store.max_elev();
+        let min_elev = i16::MAX.into();
+        let max_elev = i16::MAX.into();
 
         Ok(Self {
             sw_corner,
@@ -195,8 +201,8 @@ impl Tile {
         };
 
         let sample_store = Storage::Tombstone;
-        let min_elev = sample_store.min_elev();
-        let max_elev = sample_store.max_elev();
+        let min_elev = i16::MAX.into();
+        let max_elev = i16::MAX.into();
 
         Self {
             sw_corner,
@@ -219,12 +225,22 @@ impl Tile {
 
     /// Returns the lowest elevation sample in this tile.
     pub fn min_elev(&self) -> i16 {
-        self.min_elev
+        let mut min_elev = self.min_elev.load(Ordering::Relaxed);
+        if min_elev == i16::MAX {
+            min_elev = self.sample_store.min_elev();
+            self.min_elev.store(min_elev, Ordering::SeqCst);
+        };
+        min_elev
     }
 
     /// Returns the highest elevation sample in this tile.
     pub fn max_elev(&self) -> i16 {
-        self.max_elev
+        let mut max_elev = self.max_elev.load(Ordering::Relaxed);
+        if max_elev == i16::MAX {
+            max_elev = self.sample_store.max_elev();
+            self.max_elev.store(max_elev, Ordering::SeqCst);
+        };
+        max_elev
     }
 
     /// Rreturns this tile's resolution in arcseconds per sample.
