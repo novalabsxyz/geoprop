@@ -366,6 +366,14 @@ impl<'a> Sample<'a> {
     }
 }
 
+impl<'a> std::cmp::PartialEq for Sample<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index && std::ptr::eq(self, other)
+    }
+}
+
+impl<'a> std::cmp::Eq for Sample<'a> {}
+
 fn extract_resolution<P: AsRef<Path>>(path: P) -> Result<(u8, (usize, usize)), NasademError> {
     const RES_1_ARCSECONDS_FIBE_BEN: u64 = 3601 * 3601 * size_of::<u16>() as u64;
     const RES_3_ARCSECONDS_FIBE_BEN: u64 = 1201 * 1201 * size_of::<u16>() as u64;
