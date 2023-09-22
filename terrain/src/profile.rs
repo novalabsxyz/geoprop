@@ -1,6 +1,6 @@
-use crate::{TerrainError, Tiles};
+use crate::{haversine::HaversineIntermediate, TerrainError, Tiles};
 use geo::{
-    algorithm::{HaversineDistance, HaversineIntermediate},
+    algorithm::HaversineDistance,
     geometry::{Coord, Point},
     CoordFloat,
 };
