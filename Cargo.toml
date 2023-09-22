@@ -7,26 +7,26 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-assert_approx_eq = "1.1.0"
-byteorder        = "1.4.3"
-clap             = { version = "4.4.2", features = ["derive"] }
-criterion        = { version = "0.5", features = ["html_reports"] }
-dashmap          = "5.5.3"
-env_logger       = "0.10.0"
-fast-math        = "0.1.1"
-geo              = "0.26.0"
-h3o              = { version = "0.4.0", features = ["geo"] }
-hextree          = "0.3.1"
-indicatif        = "0.17.6"
-log              = "0.4.20"
-memmap2          = "0.7.1"
-num-traits       = "0.2.16"
-plotters         = "0.3.5"
-rayon            = "1.7.0"
-serde            = { version = "1", features = ["derive"] }
-serde_json       = "1"
-textplots        = "0.8.4"
-thiserror        = "1.0.48"
+approx     = "0.5.1"
+byteorder  = "1.4.3"
+clap       = { version = "4.4.2", features = ["derive"] }
+criterion  = { version = "0.5", features = ["html_reports"] }
+dashmap    = "5.5.3"
+env_logger = "0.10.0"
+fast-math  = "0.1.1"
+geo        = "0.26.0"
+h3o        = { version = "0.4.0", features = ["geo"] }
+hextree    = "0.3.1"
+indicatif  = "0.17.6"
+log        = "0.4.20"
+memmap2    = "0.7.1"
+num-traits = "0.2.16"
+plotters   = "0.3.5"
+rayon      = "1.7.0"
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+textplots  = "0.8.4"
+thiserror  = "1.0.48"
 
 # We want meaninful stack traces when profiling/debugging
 # benches/tests.
