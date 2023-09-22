@@ -1,5 +1,6 @@
 mod error;
 mod haversine;
+pub mod math;
 mod profile;
 mod tiles;
 

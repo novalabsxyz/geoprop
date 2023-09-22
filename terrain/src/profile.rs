@@ -1,4 +1,4 @@
-use crate::{haversine::Haversine, TerrainError, Tiles};
+use crate::{haversine::Haversine, math::Atan2, TerrainError, Tiles};
 use geo::{
     algorithm::HaversineDistance,
     geometry::{Coord, Point},
@@ -21,7 +21,7 @@ pub struct Profile<C: CoordFloat = f32> {
     pub terrain: Vec<i16>,
 }
 
-impl<C: CoordFloat + FromPrimitive> Profile<C> {
+impl<C: CoordFloat + FromPrimitive + Atan2> Profile<C> {
     pub fn new(
         start @ Coord {
             x: start_x,

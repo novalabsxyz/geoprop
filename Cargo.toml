@@ -13,6 +13,7 @@ clap             = { version = "4.4.2", features = ["derive"] }
 criterion        = { version = "0.5", features = ["html_reports"] }
 dashmap          = "5.5.3"
 env_logger       = "0.10.0"
+fast-math        = "0.1.1"
 geo              = "0.26.0"
 h3o              = { version = "0.4.0", features = ["geo"] }
 hextree          = "0.3.1"

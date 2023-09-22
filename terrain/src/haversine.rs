@@ -3,7 +3,7 @@
 //!
 //! [geo](https://github.com/georust/geo/blob/eb0cd98f3ccfa226631af23d94d66d214ea66488/geo/src/algorithm/haversine_intermediate.rs)
 
-use crate::MEAN_EARTH_RADIUS;
+use crate::{math::Atan2, MEAN_EARTH_RADIUS};
 use geo::{CoordFloat, Point};
 use num_traits::FromPrimitive;
 
@@ -70,7 +70,7 @@ impl<T: CoordFloat + FromPrimitive> Haversine<T> {
     }
 }
 
-impl<T: CoordFloat + FromPrimitive> Iterator for Haversine<T> {
+impl<T: CoordFloat + FromPrimitive + Atan2> Iterator for Haversine<T> {
     type Item = Point<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -89,7 +89,7 @@ impl<T: CoordFloat + FromPrimitive> Iterator for Haversine<T> {
 
 impl<T> HaversineIntermediate<T> for Point<T>
 where
-    T: CoordFloat + FromPrimitive,
+    T: CoordFloat + FromPrimitive + Atan2,
 {
     fn haversine_intermediate(&self, other: &Point<T>, f: T) -> Point<T> {
         let params = get_params(self, other);
@@ -147,7 +147,7 @@ struct HaversineParams<T: num_traits::Float + FromPrimitive> {
 }
 
 #[allow(clippy::many_single_char_names)]
-fn get_point<T: CoordFloat + FromPrimitive>(params: &HaversineParams<T>, f: T) -> Point<T> {
+fn get_point<T: CoordFloat + FromPrimitive + Atan2>(params: &HaversineParams<T>, f: T) -> Point<T> {
     let one = T::one();
 
     let HaversineParams {
@@ -167,8 +167,8 @@ fn get_point<T: CoordFloat + FromPrimitive>(params: &HaversineParams<T>, f: T) -
     let y = a * p + b * q;
     let z = a * r + b * s;
 
-    let lat = z.atan2(x.hypot(y));
-    let lon = y.atan2(x);
+    let lat = Atan2::atan2(z, x.hypot(y));
+    let lon = Atan2::atan2(y, x);
 
     Point::new(lon.to_degrees(), lat.to_degrees())
 }
