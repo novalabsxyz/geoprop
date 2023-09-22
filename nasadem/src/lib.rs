@@ -17,12 +17,6 @@ use geo::{
     geometry::{Coord, Polygon},
     polygon,
 };
-#[cfg(feature = "kml")]
-use kml::{
-    self,
-    types::{Coord as KmlCoord, LinearRing as KmlLinearRing, Polygon as KmlPolygon},
-    Kml,
-};
 use memmap2::Mmap;
 use std::{
     fs::File,
@@ -215,14 +209,6 @@ impl Tile {
         }
     }
 
-    #[cfg(feature = "kml")]
-    pub fn to_kml(&self) -> Vec<Kml> {
-        self.iter()
-            .take(10)
-            .map(|sample| Kml::Polygon(sample.to_kml()))
-            .collect()
-    }
-
     /// Returns the lowest elevation sample in this tile.
     pub fn min_elevation(&self) -> i16 {
         let mut min_elevation = self.min_elevation.load(Ordering::Relaxed);
@@ -343,26 +329,6 @@ impl<'a> Sample<'a> {
     pub fn polygon(&self) -> Polygon {
         self.tile
             .xy_to_polygon(self.tile.linear_index_to_xy(self.index))
-    }
-
-    #[cfg(feature = "kml")]
-    pub fn to_kml(&self) -> KmlPolygon {
-        let geo_poly = self.polygon();
-        let outer_ring_coords: Vec<KmlCoord<C>> = geo_poly
-            .exterior()
-            .coords()
-            .map(|Coord { x, y }| KmlCoord {
-                x: *x,
-                y: *y,
-                z: None,
-            })
-            .collect();
-
-        let outer_ring = KmlLinearRing {
-            coords: outer_ring_coords,
-            ..Default::default()
-        };
-        KmlPolygon::new(outer_ring, Vec::new())
     }
 }
 
@@ -505,9 +471,6 @@ mod _3_arc_second {
     use geo::geometry::LineString;
     use std::path::PathBuf;
 
-    #[cfg(feature = "kml")]
-    use kml::types::{Kml, KmlDocument, KmlVersion};
-
     fn three_arcsecond_dir() -> PathBuf {
         [
             env!("CARGO_MANIFEST_DIR"),
@@ -605,24 +568,5 @@ mod _3_arc_second {
                 vec![],
             )
         );
-    }
-
-    #[cfg(feature = "kml")]
-    #[test]
-    fn test_to_kml() {
-        let kml_doc = {
-            let mut path = three_arcsecond_dir();
-            path.push("N44W072.hgt");
-            let parsed_tile = Tile::load(&path).unwrap();
-            let elements = parsed_tile.to_kml();
-            Kml::KmlDocument(KmlDocument {
-                version: KmlVersion::V22,
-                elements,
-                ..Default::default()
-            })
-        };
-        let out = std::io::BufWriter::new(File::create("/tmp/N44W072.kml").unwrap());
-        let mut writer = kml::KmlWriter::from_writer(out);
-        writer.write(&kml_doc).unwrap();
     }
 }
