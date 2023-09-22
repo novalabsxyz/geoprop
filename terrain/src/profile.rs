@@ -1,6 +1,6 @@
 use crate::{TerrainError, Tiles};
 use geo::{
-    algorithm::haversine_intermediate::HaversineIntermediate,
+    algorithm::{HaversineDistance, HaversineIntermediate},
     geometry::{Coord, Point},
     CoordFloat,
 };
@@ -9,7 +9,15 @@ use num_traits::cast::FromPrimitive;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Profile<C: CoordFloat = f32> {
+    /// Total distance from `start` to `end` in meters.
+    pub distance: C,
+
+    /// Location of step along the great circle route from `start` to
+    /// `end`.
     pub path: Vec<Point<C>>,
+
+    /// Elevation at each step along the great circle route from
+    /// `start` to `end`.
     pub terrain: Vec<i16>,
 }
 
@@ -27,6 +35,11 @@ impl<C: CoordFloat> Profile<C> {
         C: FromPrimitive,
         f64: From<C>,
     {
+        let start_point = Point::from(start);
+        let end_point = Point::from(end);
+
+        let distance = start_point.haversine_distance(&end_point);
+
         let (path, path_runtime) = {
             let now = std::time::Instant::now();
             let path = HaversineIntermediate::haversine_intermediate_fill(
@@ -70,7 +83,11 @@ impl<C: CoordFloat> Profile<C> {
             terrain_runtime
         );
 
-        Ok(Self { path, terrain })
+        Ok(Self {
+            distance,
+            path,
+            terrain,
+        })
     }
 }
 
