@@ -1,4 +1,4 @@
-use crate::{haversine::Haversine, math::Atan2, TerrainError, Tiles};
+use crate::{haversine::HaversineIter, math::Atan2, TerrainError, Tiles};
 use geo::{
     algorithm::HaversineDistance,
     geometry::{Coord, Point},
@@ -43,7 +43,7 @@ impl<C: CoordFloat + FromPrimitive + Atan2> Profile<C> {
         let (path, path_runtime) = {
             let now = std::time::Instant::now();
             let path: Vec<Point<C>> =
-                Haversine::new(Point::from(start), step_size_m, Point::from(end)).collect();
+                HaversineIter::new(Point::from(start), step_size_m, Point::from(end)).collect();
             let runtime = now.elapsed();
             (path, runtime)
         };

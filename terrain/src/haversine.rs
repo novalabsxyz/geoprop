@@ -43,7 +43,7 @@ pub(crate) trait HaversineIntermediate<T: CoordFloat> {
     ) -> Vec<Point<T>>;
 }
 
-pub(crate) struct Haversine<T: CoordFloat + FromPrimitive = f32> {
+pub(crate) struct HaversineIter<T: CoordFloat + FromPrimitive = f32> {
     start: Option<Point<T>>,
     end: Option<Point<T>>,
     params: HaversineParams<T>,
@@ -51,7 +51,7 @@ pub(crate) struct Haversine<T: CoordFloat + FromPrimitive = f32> {
     current_step: T,
 }
 
-impl<T: CoordFloat + FromPrimitive> Haversine<T> {
+impl<T: CoordFloat + FromPrimitive> HaversineIter<T> {
     pub fn new(start: Point<T>, max_step_size: T, end: Point<T>) -> Self {
         let params = get_params(&start, &end);
         let HaversineParams { d, .. } = params;
@@ -70,7 +70,7 @@ impl<T: CoordFloat + FromPrimitive> Haversine<T> {
     }
 }
 
-impl<T: CoordFloat + FromPrimitive + Atan2> Iterator for Haversine<T> {
+impl<T: CoordFloat + FromPrimitive + Atan2> Iterator for HaversineIter<T> {
     type Item = Point<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
