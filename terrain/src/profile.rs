@@ -4,11 +4,12 @@ use geo::{
     geometry::{Coord, Point},
     CoordFloat,
 };
+use log::debug;
 use num_traits::cast::FromPrimitive;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Profile<C: CoordFloat = f32> {
-    pub points: Vec<Point<C>>,
+    pub path: Vec<Point<C>>,
     pub terrain: Vec<i16>,
 }
 
@@ -26,33 +27,50 @@ impl<C: CoordFloat> Profile<C> {
         C: FromPrimitive,
         f64: From<C>,
     {
-        let points = HaversineIntermediate::haversine_intermediate_fill(
-            &Point::from(start),
-            &Point::from(end),
-            step_size_m,
-            true,
+        let (path, path_runtime) = {
+            let now = std::time::Instant::now();
+            let path = HaversineIntermediate::haversine_intermediate_fill(
+                &Point::from(start),
+                &Point::from(end),
+                step_size_m,
+                true,
+            );
+            let runtime = now.elapsed();
+            (path, runtime)
+        };
+
+        let (terrain, terrain_runtime) = {
+            let mut terrain = Vec::with_capacity(path.len());
+            let now = std::time::Instant::now();
+            let mut tile = tiles.get(Coord {
+                x: start_x.into(),
+                y: start_y.into(),
+            })?;
+            for point in path.iter() {
+                let coord = Coord {
+                    x: point.0.x.into(),
+                    y: point.0.y.into(),
+                };
+                if let Some(elevation) = tile.get(coord) {
+                    terrain.push(elevation)
+                } else {
+                    tile = tiles.get(coord)?;
+                    let elevation = tile.get_unchecked(coord);
+                    terrain.push(elevation);
+                }
+            }
+            let runtime = now.elapsed();
+            (terrain, runtime)
+        };
+
+        debug!(
+            "profile; len: {}, path_exec: {:?}, terrain_exec: {:?}",
+            path.len(),
+            path_runtime,
+            terrain_runtime
         );
 
-        let mut terrain = Vec::with_capacity(points.len());
-        let mut tile = tiles.get(Coord {
-            x: start_x.into(),
-            y: start_y.into(),
-        })?;
-        for point in points.iter() {
-            let coord = Coord {
-                x: point.0.x.into(),
-                y: point.0.y.into(),
-            };
-            if let Some(elevation) = tile.get(coord) {
-                terrain.push(elevation)
-            } else {
-                tile = tiles.get(coord)?;
-                let elevation = tile.get_unchecked(coord);
-                terrain.push(elevation);
-            }
-        }
-
-        Ok(Self { points, terrain })
+        Ok(Self { path, terrain })
     }
 }
 
@@ -160,8 +178,8 @@ mod tests {
             let Point(Coord {
                 x: start_x,
                 y: start_y,
-            }) = self.points.first().unwrap();
-            let Point(Coord { x: end_x, y: end_y }) = self.points.first().unwrap();
+            }) = self.path.first().unwrap();
+            let Point(Coord { x: end_x, y: end_y }) = self.path.first().unwrap();
             let caption = format!("({:6},{:6}) to ({:6},{:6})", start_y, start_x, end_y, end_x);
             let mut chart = ChartBuilder::on(&root)
                 .caption(caption, ("sans-serif", 16).into_font())

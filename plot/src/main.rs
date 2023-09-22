@@ -17,6 +17,8 @@ fn main() -> Result<(), AnyError> {
         cmd,
     } = Cli::parse();
 
+    env_logger::init();
+
     let tile_src = Tiles::new(srtm_dir, TileMode::MemMap)?;
     let terrain_profile = Profile::new(start.0, step_size, dest.0, &tile_src)?;
 
@@ -61,7 +63,7 @@ fn json(profile: Profile<f64>) -> Result<(), AnyError> {
     }
 
     let reshaped: Vec<JsonEntry> = profile
-        .points
+        .path
         .iter()
         .zip(profile.terrain.iter())
         .map(|(point, elev)| JsonEntry {
