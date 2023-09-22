@@ -44,25 +44,25 @@ pub(crate) trait HaversineIntermediate<T: CoordFloat> {
 }
 
 pub(crate) struct Haversine<T: CoordFloat + FromPrimitive = f32> {
-    start: Point<T>,
-    end: Point<T>,
+    start: Option<Point<T>>,
+    end: Option<Point<T>>,
     params: HaversineParams<T>,
     interval: T,
     current_step: T,
 }
 
 impl<T: CoordFloat + FromPrimitive> Haversine<T> {
-    fn new(start: Point<T>, max_step_size: T, end: Point<T>) -> Self {
+    pub fn new(start: Point<T>, max_step_size: T, end: Point<T>) -> Self {
         let params = get_params(&start, &end);
         let HaversineParams { d, .. } = params;
         let total_distance = d * T::from(MEAN_EARTH_RADIUS).unwrap();
         let number_of_points = (total_distance / max_step_size).ceil();
         let interval = T::one() / number_of_points;
-        let current_step = interval;
+        let current_step = T::zero();
 
         Self {
-            start,
-            end,
+            start: Some(start),
+            end: Some(end),
             params,
             interval,
             current_step,
@@ -74,7 +74,15 @@ impl<T: CoordFloat + FromPrimitive> Iterator for Haversine<T> {
     type Item = Point<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        unimplemented!()
+        if self.start.is_some() {
+            self.start.take()
+        } else if self.current_step < T::one() {
+            let ret = Some(get_point(&self.params, self.current_step));
+            self.current_step = self.current_step + self.interval;
+            ret
+        } else {
+            self.end.take()
+        }
     }
 }
 
