@@ -1,4 +1,4 @@
-use crate::{haversine::HaversineIntermediate, TerrainError, Tiles};
+use crate::{haversine::Haversine, TerrainError, Tiles};
 use geo::{
     algorithm::HaversineDistance,
     geometry::{Coord, Point},
@@ -21,7 +21,7 @@ pub struct Profile<C: CoordFloat = f32> {
     pub terrain: Vec<i16>,
 }
 
-impl<C: CoordFloat> Profile<C> {
+impl<C: CoordFloat + FromPrimitive> Profile<C> {
     pub fn new(
         start @ Coord {
             x: start_x,
@@ -42,12 +42,8 @@ impl<C: CoordFloat> Profile<C> {
 
         let (path, path_runtime) = {
             let now = std::time::Instant::now();
-            let path = HaversineIntermediate::haversine_intermediate_fill(
-                &Point::from(start),
-                &Point::from(end),
-                step_size_m,
-                true,
-            );
+            let path: Vec<Point<C>> =
+                Haversine::new(Point::from(start), step_size_m, Point::from(end)).collect();
             let runtime = now.elapsed();
             (path, runtime)
         };
@@ -95,10 +91,8 @@ impl<C: CoordFloat> Profile<C> {
 mod tests {
     #![allow(clippy::excessive_precision)]
 
-    use super::{Coord, CoordFloat, Point, Profile, Tiles};
+    use super::{Coord, Profile, Tiles};
     use crate::TileMode;
-    use plotters::prelude::*;
-    use std::{fmt::Display, path::Path};
 
     /// ```xml
     /// <?xml version="1.0" encoding="UTF-8"?>
@@ -159,78 +153,9 @@ mod tests {
 
         let tile_source = Tiles::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
 
-        let now = std::time::Instant::now();
         let _90m = 90.0;
-        let mut profile = Profile::new(start, _90m, end, &tile_source).unwrap();
-        let duration = now.elapsed();
-        println!(
-            "[01] mt washington profile, len: {}, duration: {:?}",
-            profile.terrain.len(),
-            duration
-        );
-
-        for i in 2..11 {
-            let now = std::time::Instant::now();
-            let _90m = 90.0;
-            profile = Profile::new(start, _90m, end, &tile_source).unwrap();
-            let duration = now.elapsed();
-            println!(
-                "[{:02}] mt washington profile, len: {}, duration: {:?}",
-                i,
-                profile.terrain.len(),
-                duration
-            );
-        }
-
-        profile.plot("/tmp/path.svg");
-    }
-
-    impl<C: CoordFloat> Profile<C> {
-        pub fn plot<P: AsRef<Path>>(&self, path: P)
-        where
-            C: Display,
-        {
-            let root = SVGBackend::new(&path, (1400, 700)).into_drawing_area();
-            root.fill(&WHITE).unwrap();
-            let Point(Coord {
-                x: start_x,
-                y: start_y,
-            }) = self.path.first().unwrap();
-            let Point(Coord { x: end_x, y: end_y }) = self.path.first().unwrap();
-            let caption = format!("({:6},{:6}) to ({:6},{:6})", start_y, start_x, end_y, end_x);
-            let mut chart = ChartBuilder::on(&root)
-                .caption(caption, ("sans-serif", 16).into_font())
-                .margin(5)
-                .x_label_area_size(40)
-                .y_label_area_size(40)
-                .build_cartesian_2d(
-                    0f32..(self.terrain.len() as f32 * 30.0f32),
-                    1300f32..2000f32,
-                )
-                .unwrap();
-
-            chart.configure_mesh().draw().unwrap();
-
-            chart
-                .draw_series(LineSeries::new(
-                    self.terrain
-                        .iter()
-                        .enumerate()
-                        .map(|(idx, elev)| (idx as f32 * 30.0, *elev as f32)),
-                    &RED,
-                ))
-                .unwrap()
-                .label("Elevation")
-                .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
-
-            chart
-                .configure_series_labels()
-                .background_style(WHITE.mix(0.8))
-                .border_style(BLACK)
-                .draw()
-                .unwrap();
-
-            root.present().unwrap();
-        }
+        let profile = Profile::new(start, _90m, end, &tile_source).unwrap();
+        println!("{:#?}", profile);
+        assert_eq!(36, profile.path.len());
     }
 }
