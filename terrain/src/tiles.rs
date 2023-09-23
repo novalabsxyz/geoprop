@@ -1,6 +1,6 @@
 //! NASADEM file aggregator.
 
-use crate::{TerrainError, C};
+use crate::TerrainError;
 use dashmap::DashMap;
 use geo::geometry::Coord;
 use nasadem::{NasademError, Tile};
@@ -9,6 +9,9 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+
+/// Floating point type used for tile lookup.
+pub type C = f64;
 
 #[derive(Clone)]
 pub struct Tiles {

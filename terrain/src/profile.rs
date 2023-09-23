@@ -92,7 +92,7 @@ mod tests {
     #![allow(clippy::excessive_precision)]
 
     use super::{Coord, Profile, Tiles};
-    use crate::TileMode;
+    use crate::tiles::TileMode;
 
     /// ```xml
     /// <?xml version="1.0" encoding="UTF-8"?>

@@ -3,7 +3,7 @@
 //!
 //! [geo](https://github.com/georust/geo/blob/eb0cd98f3ccfa226631af23d94d66d214ea66488/geo/src/algorithm/haversine_intermediate.rs)
 
-use crate::{math::Atan2, MEAN_EARTH_RADIUS};
+use crate::{constants::MEAN_EARTH_RADIUS, math::Atan2};
 use geo::{CoordFloat, Point};
 use num_traits::FromPrimitive;
 
