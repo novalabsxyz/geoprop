@@ -259,7 +259,7 @@ mod test {
     fn should_be_start_end_test() {
         let p1 = Point::new(30.0, 40.0);
         let p2 = Point::new(40.0, 50.0);
-        let max_dist = 1500000.0; // meters
+        let max_dist = 1_500_000.0; // meters
         let include_ends = true;
         let route = p1.haversine_intermediate_fill(&p2, max_dist, include_ends);
         assert_eq!(route, vec![p1, p2]);
@@ -269,7 +269,7 @@ mod test {
     fn should_add_i50_test() {
         let p1 = Point::new(30.0, 40.0);
         let p2 = Point::new(40.0, 50.0);
-        let max_dist = 1000000.0; // meters
+        let max_dist = 1_000_000.0; // meters
         let include_ends = true;
         let i50 = p1.clone().haversine_intermediate(&p2, 0.5);
         let route = p1.haversine_intermediate_fill(&p2, max_dist, include_ends);
@@ -280,7 +280,7 @@ mod test {
     fn should_add_i25_i50_i75_test() {
         let p1 = Point::new(30.0, 40.0);
         let p2 = Point::new(40.0, 50.0);
-        let max_dist = 400000.0; // meters
+        let max_dist = 400_000.0; // meters
         let include_ends = true;
         let i25 = p1.clone().haversine_intermediate(&p2, 0.25);
         let i50 = p1.clone().haversine_intermediate(&p2, 0.5);

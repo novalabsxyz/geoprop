@@ -36,7 +36,7 @@ impl Tiles {
         // least one `hgt` file.
         for entry in std::fs::read_dir(&tile_dir)? {
             let path = entry?.path();
-            if Some("hgt") == path.extension().and_then(|ext| ext.to_str()) {
+            if Some("hgt") == path.extension().and_then(std::ffi::OsStr::to_str) {
                 has_height_files = true;
                 break;
             }
@@ -56,8 +56,8 @@ impl Tiles {
 
     /// Returns the tile containiong `coord`, if any.
     ///
-    /// This TileSource will attempt to load the tile from disk if it
-    /// doesn't already have it in memory.
+    /// `Tiles` will attempt to fetch the tile from disk if it doesn't
+    /// already have it in memory.
     pub fn get(&self, coord: Coord<C>) -> Result<Arc<Tile>, TerrainError> {
         let sw_corner = sw_corner(coord);
         self.tiles
@@ -67,7 +67,7 @@ impl Tiles {
                 Err(TerrainError::Nasadem(NasademError::Io(e)))
                     if e.kind() == ErrorKind::NotFound =>
                 {
-                    Ok(Arc::new(self.load_tombstone(coord)))
+                    Ok(Arc::new(Self::load_tombstone(coord)))
                 }
                 Err(e) => Err(e),
             })
@@ -75,6 +75,7 @@ impl Tiles {
     }
 }
 
+/// Private API.
 impl Tiles {
     fn load_tile(&self, sw_corner: Coord<i16>) -> Result<Tile, TerrainError> {
         let file_name = file_name(sw_corner);
@@ -86,7 +87,7 @@ impl Tiles {
         }
     }
 
-    fn load_tombstone(&self, sw_corner: Coord<C>) -> Tile {
+    fn load_tombstone(sw_corner: Coord<C>) -> Tile {
         Tile::tombstone(sw_corner)
     }
 }
@@ -110,6 +111,7 @@ pub enum TileMode {
 
 /// Returns the southwest corner as integers for coord.
 fn sw_corner(Coord { x, y }: Coord<C>) -> Coord<i16> {
+    #[allow(clippy::cast_possible_truncation)]
     Coord {
         x: (x.floor() as i16),
         y: (y.floor() as i16),
@@ -120,18 +122,12 @@ fn sw_corner(Coord { x, y }: Coord<C>) -> Coord<i16> {
 fn file_name(Coord { x, y }: Coord<i16>) -> String {
     let (n_s, lat) = {
         let lat = y.abs();
-        let n_s = match y.is_positive() {
-            true => 'N',
-            false => 'S',
-        };
+        let n_s = if y.is_positive() { 'N' } else { 'S' };
         (n_s, lat)
     };
     let (e_w, lon) = {
         let lon = x.abs();
-        let e_w = match x.is_positive() {
-            true => 'E',
-            false => 'W',
-        };
+        let e_w = if x.is_positive() { 'E' } else { 'W' };
         (e_w, lon)
     };
     format!("{n_s}{lat:02}{e_w}{lon:03}.hgt")

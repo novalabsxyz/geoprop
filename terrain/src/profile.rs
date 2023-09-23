@@ -55,13 +55,13 @@ impl<C: CoordFloat + FromPrimitive + Atan2> Profile<C> {
                 x: start_x.into(),
                 y: start_y.into(),
             })?;
-            for point in path.iter() {
+            for point in &path {
                 let coord = Coord {
                     x: point.0.x.into(),
                     y: point.0.y.into(),
                 };
                 if let Some(elevation) = tile.get(coord) {
-                    terrain.push(elevation)
+                    terrain.push(elevation);
                 } else {
                     tile = tiles.get(coord)?;
                     let elevation = tile.get_unchecked(coord);

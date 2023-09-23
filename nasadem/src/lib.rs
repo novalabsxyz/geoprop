@@ -117,6 +117,7 @@ impl Tile {
             }
         };
 
+        #[allow(clippy::cast_precision_loss)]
         let ne_corner = Coord {
             y: sw_corner.y + (dimensions.0 as C * C::from(resolution)) / ARCSEC_PER_DEG,
             x: sw_corner.x + (dimensions.1 as C * C::from(resolution)) / ARCSEC_PER_DEG,
@@ -161,6 +162,7 @@ impl Tile {
             }
         };
 
+        #[allow(clippy::cast_precision_loss)]
         let ne_corner = Coord {
             y: sw_corner.y + (cols as C * C::from(resolution)) / ARCSEC_PER_DEG,
             x: sw_corner.x + (rows as C * C::from(resolution)) / ARCSEC_PER_DEG,
@@ -189,6 +191,7 @@ impl Tile {
     pub fn tombstone(sw_corner: Coord<C>) -> Self {
         let (resolution, dimensions) = (3, (1201, 1201));
 
+        #[allow(clippy::cast_precision_loss)]
         let ne_corner = Coord {
             y: sw_corner.y + (dimensions.0 as C * C::from(resolution)) / ARCSEC_PER_DEG,
             x: sw_corner.x + (dimensions.1 as C * C::from(resolution)) / ARCSEC_PER_DEG,
@@ -236,10 +239,10 @@ impl Tile {
 
     /// Returns the sample at the given geo coordinates.
     pub fn get(&self, coord: Coord<C>) -> Option<i16> {
-        let _2d_idx @ (idx_x, idx_y) = self.coord_to_xy(coord);
+        let idx_2d @ (idx_x, idx_y) = self.coord_to_xy(coord);
         if idx_x < self.dimensions.0 && idx_y < self.dimensions.1 {
-            let _1d_idx = self.xy_to_linear_index(_2d_idx);
-            Some(self.samples.get_unchecked(_1d_idx))
+            let idx_1d = self.xy_to_linear_index(idx_2d);
+            Some(self.samples.get_unchecked(idx_1d))
         } else {
             None
         }
@@ -247,9 +250,9 @@ impl Tile {
 
     /// Returns the sample at the given geo coordinates.
     pub fn get_unchecked(&self, coord: Coord<C>) -> i16 {
-        let _2d_idx = self.coord_to_xy(coord);
-        let _1d_idx = self.xy_to_linear_index(_2d_idx);
-        self.samples.get_unchecked(_1d_idx)
+        let idx_2d = self.coord_to_xy(coord);
+        let idx_1d = self.xy_to_linear_index(idx_2d);
+        self.samples.get_unchecked(idx_1d)
     }
 
     /// Returns and iterator over `self`'s grid squares.
@@ -261,8 +264,8 @@ impl Tile {
 /// Private API
 impl Tile {
     fn get_xy(&self, (x, y): (usize, usize)) -> i16 {
-        let _1d_idx = self.xy_to_linear_index((x, y));
-        self.samples.get_unchecked(_1d_idx)
+        let idx_1d = self.xy_to_linear_index((x, y));
+        self.samples.get_unchecked(idx_1d)
     }
 
     fn coord_to_xy(&self, coord: Coord<C>) -> (usize, usize) {
@@ -288,6 +291,7 @@ impl Tile {
     }
 
     fn xy_to_polygon(&self, (x, y): (usize, usize)) -> Polygon<C> {
+        #[allow(clippy::cast_precision_loss)]
         let center = Coord {
             x: self.sw_corner.x + (y as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
             y: self.sw_corner.y + (x as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
@@ -355,7 +359,7 @@ fn parse_sw_corner<P: AsRef<Path>>(path: P) -> Result<Coord<i16>, NasademError> 
     let name = path
         .as_ref()
         .file_stem()
-        .and_then(|s| s.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(mk_err)?;
     if name.len() != 7 {
         return Err(mk_err());
@@ -454,8 +458,8 @@ mod _1_arc_second {
         let tile = Tile::load(&path).unwrap();
         for row in (0..3601).rev() {
             for col in 0..3601 {
-                let _1d = tile.xy_to_linear_index((col, row));
-                let roundtrip_2d = tile.linear_index_to_xy(_1d);
+                let d1 = tile.xy_to_linear_index((col, row));
+                let roundtrip_2d = tile.linear_index_to_xy(d1);
                 assert_eq!((col, row), roundtrip_2d);
             }
         }
@@ -507,8 +511,8 @@ mod _3_arc_second {
         let tile = Tile::load(&path).unwrap();
         let raw_file_samples = {
             let mut file_data = Vec::new();
-            let mut file = BufReader::new(File::open(path).unwrap());
-            while let Ok(sample) = file.read_i16::<BE>() {
+            let mut raw = BufReader::new(File::open(path).unwrap());
+            while let Ok(sample) = raw.read_i16::<BE>() {
                 file_data.push(sample);
             }
             file_data
@@ -543,8 +547,8 @@ mod _3_arc_second {
         let parsed_tile = Tile::load(&path).unwrap();
         for row in (0..1201).rev() {
             for col in 0..1201 {
-                let _1d = parsed_tile.xy_to_linear_index((col, row));
-                let roundtrip_2d = parsed_tile.linear_index_to_xy(_1d);
+                let d1 = parsed_tile.xy_to_linear_index((col, row));
+                let roundtrip_2d = parsed_tile.linear_index_to_xy(d1);
                 assert_eq!((col, row), roundtrip_2d);
             }
         }
