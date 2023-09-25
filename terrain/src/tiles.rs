@@ -22,9 +22,6 @@ pub struct Tiles {
     tile_mode: TileMode,
 
     /// Tiles which have been loaded on demand.
-    ///
-    /// Tiles are wrapped in an Option to differenctate between having
-    /// never attempted to load it from disk vs not exisiting on disk.
     tiles: DashMap<Coord<i16>, Arc<Tile>>,
 }
 
