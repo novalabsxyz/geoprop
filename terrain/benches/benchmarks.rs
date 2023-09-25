@@ -57,19 +57,46 @@ fn memmap_terrain_profile(c: &mut Criterion) {
     group.bench_with_input(
         "2.4 km",
         &(&tile_source, _90m, _2_4km),
-        |b, (t, d, (s, e))| b.iter(|| Profile::new(*s, *d, *e, t).unwrap()),
+        |b, (t, d, (s, e))| {
+            b.iter(|| {
+                Profile::builder()
+                    .start(*s)
+                    .step_size(*d)
+                    .end(*e)
+                    .build(t)
+                    .unwrap()
+            })
+        },
     );
 
     group.bench_with_input(
         "67 km",
         &(&tile_source, _90m, _67km),
-        |b, (t, d, (s, e))| b.iter(|| Profile::new(*s, *d, *e, t).unwrap()),
+        |b, (t, d, (s, e))| {
+            b.iter(|| {
+                Profile::builder()
+                    .start(*s)
+                    .step_size(*d)
+                    .end(*e)
+                    .build(t)
+                    .unwrap()
+            })
+        },
     );
 
     group.bench_with_input(
         "103 km",
         &(&tile_source, _90m, _103km),
-        |b, (t, d, (s, e))| b.iter(|| Profile::new(*s, *d, *e, t).unwrap()),
+        |b, (t, d, (s, e))| {
+            b.iter(|| {
+                Profile::builder()
+                    .start(*s)
+                    .step_size(*d)
+                    .end(*e)
+                    .build(t)
+                    .unwrap()
+            })
+        },
     );
 }
 

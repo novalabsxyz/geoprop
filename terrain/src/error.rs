@@ -4,6 +4,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum TerrainError {
+    #[error("missing required parameters")]
+    Builder,
+
     #[error("{0}")]
     Io(#[from] std::io::Error),
 

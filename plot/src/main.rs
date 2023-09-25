@@ -20,7 +20,11 @@ fn main() -> Result<(), AnyError> {
     env_logger::init();
 
     let tile_src = Tiles::new(srtm_dir, TileMode::MemMap)?;
-    let terrain_profile = Profile::new(start.0, step_size, dest.0, &tile_src)?;
+    let terrain_profile = Profile::builder()
+        .start(start.0)
+        .step_size(step_size)
+        .end(dest.0)
+        .build(&tile_src)?;
 
     match cmd {
         CliCmd::Csv => print_csv(terrain_profile),
