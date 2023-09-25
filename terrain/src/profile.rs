@@ -14,7 +14,7 @@ pub struct Profile<C: CoordFloat = f32> {
 
     /// Location of step along the great circle route from `start` to
     /// `end`.
-    pub path: Vec<Point<C>>,
+    pub great_circle: Vec<Point<C>>,
 
     /// Elevation at each step along the great circle route from
     /// `start` to `end`.
@@ -81,7 +81,7 @@ impl<C: CoordFloat + FromPrimitive + Atan2> Profile<C> {
 
         Ok(Self {
             distance,
-            path,
+            great_circle: path,
             terrain,
         })
     }
@@ -156,6 +156,6 @@ mod tests {
         let _90m = 90.0;
         let profile = Profile::new(start, _90m, end, &tile_source).unwrap();
         println!("{:#?}", profile);
-        assert_eq!(36, profile.path.len());
+        assert_eq!(36, profile.great_circle.len());
     }
 }

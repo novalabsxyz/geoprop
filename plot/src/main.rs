@@ -63,7 +63,7 @@ fn json(profile: Profile<f64>) -> Result<(), AnyError> {
     }
 
     let reshaped: Vec<JsonEntry> = profile
-        .path
+        .great_circle
         .iter()
         .zip(profile.terrain.iter())
         .map(|(point, elev)| JsonEntry {
