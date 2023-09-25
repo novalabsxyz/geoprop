@@ -24,7 +24,10 @@ pub struct Profile<C: CoordFloat = f32> {
     pub terrain: Vec<i16>,
 }
 
-impl<C: CoordFloat + FromPrimitive + Atan2> Profile<C> {
+impl<C> Profile<C>
+where
+    C: CoordFloat,
+{
     pub fn new(
         start @ Coord {
             x: start_x,
@@ -35,7 +38,7 @@ impl<C: CoordFloat + FromPrimitive + Atan2> Profile<C> {
         tiles: &Tiles,
     ) -> Result<Self, TerrainError>
     where
-        C: FromPrimitive,
+        C: Atan2 + FromPrimitive,
         f64: From<C>,
     {
         let start_point = Point::from(start);
