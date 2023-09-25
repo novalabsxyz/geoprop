@@ -14,32 +14,37 @@ pub struct Cli {
     #[arg(short = 'z', long, default_value_t = 90.0)]
     pub step_size: f64,
 
-    /// Start "lat,lon"
+    /// Start "lat,lon,alt"
     #[arg(long)]
-    pub start: LatLon,
+    pub start: LatLonAlt,
 
     /// Destination "lat,lon"
     #[arg(long)]
-    pub dest: LatLon,
+    pub dest: LatLonAlt,
 
     #[command(subcommand)]
     pub cmd: Command,
 }
 
 #[derive(Clone, Debug)]
-pub struct LatLon(pub Coord<f64>);
+pub struct LatLonAlt(pub Coord<f64>, pub i16);
 
-impl FromStr for LatLon {
+impl FromStr for LatLonAlt {
     type Err = AnyError;
     fn from_str(s: &str) -> Result<Self, AnyError> {
-        let idx = s.find(',').ok_or(anyhow!("not a valid lat,lon pair"))?;
-        let (lat_str, lon_str) = {
-            let (lat_str, lon_str) = s.split_at(idx);
-            (lat_str, &lon_str[1..])
+        let (lat_str, lon_str, alt_str) = {
+            let idx = s.find(',').ok_or(anyhow!("not a valid lat,lon,alt"))?;
+            let (lat_str, lon_alt_str) = s.split_at(idx);
+            let idx = lon_alt_str[1..]
+                .find(',')
+                .ok_or(anyhow!("not a valid lat,lon,alt"))?;
+            let (lon_str, alt_str) = lon_alt_str[1..].split_at(idx);
+            (lat_str, lon_str, &alt_str[1..])
         };
         let lat = f64::from_str(lat_str)?;
         let lon = f64::from_str(lon_str)?;
-        Ok(Self(Coord { y: lat, x: lon }))
+        let alt = i16::from_str(alt_str)?;
+        Ok(Self(Coord { y: lat, x: lon }, alt))
     }
 }
 

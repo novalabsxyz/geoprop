@@ -22,8 +22,10 @@ fn main() -> Result<(), AnyError> {
     let tile_src = Tiles::new(srtm_dir, TileMode::MemMap)?;
     let terrain_profile = Profile::builder()
         .start(start.0)
+        .start_alt(start.1)
         .step_size(step_size)
         .end(dest.0)
+        .end_alt(dest.1)
         .build(&tile_src)?;
 
     match cmd {
@@ -37,7 +39,7 @@ fn main() -> Result<(), AnyError> {
 /// # Example with gnuplot
 ///
 /// ```sh
-/// cargo run --release -- --srtm-dir=data/nasadem/3arcsecond/ -z90 --start=44.28309806603165,-71.30830716441369 --dest=44.25628098424278,-71.2972073283768 csv | tr ',' ' ' | gnuplot -p -e "plot '-' using 1:4 with line"
+/// cargo run --release -- --srtm-dir=data/nasadem/3arcsecond/ -z90 --start=44.28309806603165,-71.30830716441369,0 --dest=44.25628098424278,-71.2972073283768,0 csv | tr ',' ' ' | gnuplot -p -e "plot '-' using 1:4 with line"
 /// ```
 fn print_csv(profile: Profile<f64>) -> Result<(), AnyError> {
     let mut stdout = std::io::stdout().lock();
