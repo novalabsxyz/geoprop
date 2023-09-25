@@ -43,22 +43,22 @@ impl<C: CoordFloat + FromPrimitive + Atan2> Profile<C> {
 
         let distance = start_point.haversine_distance(&end_point);
 
-        let (path, path_runtime) = {
+        let (great_circle, path_runtime) = {
             let now = std::time::Instant::now();
-            let path: Vec<Point<C>> =
+            let great_circle: Vec<Point<C>> =
                 HaversineIter::new(Point::from(start), step_size_m, Point::from(end)).collect();
             let runtime = now.elapsed();
-            (path, runtime)
+            (great_circle, runtime)
         };
 
         let (terrain, terrain_runtime) = {
-            let mut terrain = Vec::with_capacity(path.len());
+            let mut terrain = Vec::with_capacity(great_circle.len());
             let now = std::time::Instant::now();
             let mut tile = tiles.get(Coord {
                 x: start_x.into(),
                 y: start_y.into(),
             })?;
-            for point in &path {
+            for point in &great_circle {
                 let coord = Coord {
                     x: point.0.x.into(),
                     y: point.0.y.into(),
@@ -77,14 +77,14 @@ impl<C: CoordFloat + FromPrimitive + Atan2> Profile<C> {
 
         debug!(
             "profile; len: {}, path_exec: {:?}, terrain_exec: {:?}",
-            path.len(),
+            great_circle.len(),
             path_runtime,
             terrain_runtime
         );
 
         Ok(Self {
             distance,
-            great_circle: path,
+            great_circle,
             terrain,
         })
     }
