@@ -7,7 +7,7 @@ use crate::constants::MEAN_EARTH_RADIUS;
 use geo::{CoordFloat, Point};
 use num_traits::FromPrimitive;
 
-pub(crate) struct HaversineIter<T: CoordFloat + FromPrimitive = f32> {
+pub(crate) struct HaversineIter<T: CoordFloat = f32> {
     start: Option<Point<T>>,
     end: Option<Point<T>>,
     params: HaversineParams<T>,
@@ -15,8 +15,11 @@ pub(crate) struct HaversineIter<T: CoordFloat + FromPrimitive = f32> {
     current_step: T,
 }
 
-impl<T: CoordFloat + FromPrimitive> HaversineIter<T> {
-    pub fn new(start: Point<T>, max_step_size: T, end: Point<T>) -> Self {
+impl<T: CoordFloat> HaversineIter<T> {
+    pub fn new(start: Point<T>, max_step_size: T, end: Point<T>) -> Self
+    where
+        T: FromPrimitive,
+    {
         let params = get_params(&start, &end);
         let HaversineParams { d, .. } = params;
         let total_distance = d * T::from(MEAN_EARTH_RADIUS).unwrap();
@@ -34,7 +37,7 @@ impl<T: CoordFloat + FromPrimitive> HaversineIter<T> {
     }
 }
 
-impl<T: CoordFloat + FromPrimitive + Atan2> Iterator for HaversineIter<T> {
+impl<T: CoordFloat + Atan2> Iterator for HaversineIter<T> {
     type Item = Point<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -52,7 +55,7 @@ impl<T: CoordFloat + FromPrimitive + Atan2> Iterator for HaversineIter<T> {
 }
 
 #[allow(clippy::many_single_char_names)]
-struct HaversineParams<T: num_traits::Float + FromPrimitive> {
+struct HaversineParams<T> {
     d: T,
     n: T,
     o: T,
@@ -63,7 +66,10 @@ struct HaversineParams<T: num_traits::Float + FromPrimitive> {
 }
 
 #[allow(clippy::many_single_char_names)]
-fn get_point<T: CoordFloat + FromPrimitive + Atan2>(params: &HaversineParams<T>, f: T) -> Point<T> {
+fn get_point<T>(params: &HaversineParams<T>, f: T) -> Point<T>
+where
+    T: CoordFloat + Atan2,
+{
     let one = T::one();
 
     let HaversineParams {
@@ -90,7 +96,10 @@ fn get_point<T: CoordFloat + FromPrimitive + Atan2>(params: &HaversineParams<T>,
 }
 
 #[allow(clippy::many_single_char_names)]
-fn get_params<T: CoordFloat + FromPrimitive>(p1: &Point<T>, p2: &Point<T>) -> HaversineParams<T> {
+fn get_params<T>(p1: &Point<T>, p2: &Point<T>) -> HaversineParams<T>
+where
+    T: CoordFloat + FromPrimitive,
+{
     let one = T::one();
     let two = one + one;
 
