@@ -1,6 +1,5 @@
 mod constants;
 mod error;
-mod haversine;
 mod math;
 mod profile;
 mod tiles;

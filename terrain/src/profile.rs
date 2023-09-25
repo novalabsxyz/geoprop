@@ -1,4 +1,7 @@
-use crate::{haversine::HaversineIter, math::Atan2, TerrainError, Tiles};
+use crate::{
+    math::{Atan2, HaversineIter},
+    TerrainError, Tiles,
+};
 use geo::{
     algorithm::HaversineDistance,
     geometry::{Coord, Point},
