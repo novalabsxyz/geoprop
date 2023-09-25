@@ -45,10 +45,10 @@ impl FromStr for LatLon {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Print terrain values to screen.
-    Display,
+    /// Print terrain values to stdout.
+    Csv,
 
-    /// Print terrain values to screen.
+    /// Print terrain values to stdout.
     Json,
 
     /// Export an SVG.
