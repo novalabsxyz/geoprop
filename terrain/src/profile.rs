@@ -1,5 +1,5 @@
 use crate::{
-    math::{Atan2, HaversineIter},
+    math::{elevation_angle, Atan2, HaversineIter},
     TerrainError, Tiles,
 };
 use geo::{
@@ -8,7 +8,7 @@ use geo::{
     CoordFloat,
 };
 use log::debug;
-use num_traits::cast::FromPrimitive;
+use num_traits::{cast::FromPrimitive, FloatConst};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Profile<C: CoordFloat = f32> {
@@ -105,7 +105,7 @@ where
 
     pub fn build(&self, tiles: &Tiles) -> Result<Profile<C>, TerrainError>
     where
-        C: Atan2 + FromPrimitive,
+        C: Atan2 + FromPrimitive + FloatConst,
     {
         if let (Some(start), Some(step_size_m), Some(end)) =
             (self.start, self.step_size_m, self.end)
@@ -156,6 +156,18 @@ where
 
                 let runtime = now.elapsed();
                 (terrain, runtime)
+            };
+
+            let _earth_curve_runtime = {
+                let now = std::time::Instant::now();
+                let start_elev_alt = C::from(*terrain.first().unwrap()).unwrap();
+                let end_elev_alt = C::from(*terrain.last().unwrap()).unwrap();
+                let _angle = elevation_angle(start_elev_alt, distance, end_elev_alt);
+
+                let _nb = -start_elev_alt;
+                let _nm = (-end_elev_alt - -start_elev_alt) / distance;
+
+                now.elapsed()
             };
 
             debug!(
