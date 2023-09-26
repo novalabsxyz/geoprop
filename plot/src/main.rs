@@ -9,30 +9,42 @@ use terrain::{Profile, TileMode, Tiles};
 use textplots::{Chart, Plot, Shape};
 
 fn main() -> Result<(), AnyError> {
+    let cli = Cli::parse();
     let Cli {
         srtm_dir,
-        step_size,
+        rfprop,
+        max_step: step_size,
+        earth_curve,
+        normalize,
         start,
         dest,
         cmd,
-    } = Cli::parse();
+    } = &cli;
 
     env_logger::init();
 
-    let tile_src = Tiles::new(srtm_dir, TileMode::MemMap)?;
-    let terrain_profile = Profile::builder()
-        .start(start.0)
-        .start_alt(start.1)
-        .step_size(step_size)
-        .end(dest.0)
-        .end_alt(dest.1)
-        .build(&tile_src)?;
+    let tile_src = Tiles::new(srtm_dir.clone(), TileMode::MemMap)?;
+    let terrain_profile = if *rfprop {
+        None
+    } else {
+        Some(
+            Profile::builder()
+                .start(start.0)
+                .start_alt(start.1)
+                .max_step(*step_size)
+                .earth_curve(*earth_curve)
+                .normalize(*normalize)
+                .end(dest.0)
+                .end_alt(dest.1)
+                .build(&tile_src)?,
+        )
+    };
 
     match cmd {
-        CliCmd::Csv => print_csv(terrain_profile),
-        CliCmd::Plot { out: Some(out) } => plot_svg(terrain_profile, &out),
-        CliCmd::Plot { out: None } => plot_ascii(terrain_profile),
-        CliCmd::Json => json(terrain_profile),
+        CliCmd::Csv => print_csv(terrain_profile, cli.clone()),
+        CliCmd::Plot { out: Some(out) } => plot_svg(terrain_profile.unwrap(), out),
+        CliCmd::Plot { out: None } => plot_ascii(terrain_profile.unwrap()),
+        CliCmd::Json => json(terrain_profile.unwrap()),
     }
 }
 
@@ -41,19 +53,45 @@ fn main() -> Result<(), AnyError> {
 /// ```sh
 /// cargo run --release -- --srtm-dir=data/nasadem/3arcsecond/ -z90 --start=44.28309806603165,-71.30830716441369,0 --dest=44.25628098424278,-71.2972073283768,0 csv | tr ',' ' ' | gnuplot -p -e "plot '-' using 1:4 with line"
 /// ```
-fn print_csv(profile: Profile<f64>) -> Result<(), AnyError> {
+fn print_csv(profile: Option<Profile<f64>>, cli: Cli) -> Result<(), AnyError> {
     let mut stdout = std::io::stdout().lock();
-    writeln!(stdout, "Distance,Longitude,Latitude,Elevation")?;
-    for (i, (elevation, point)) in profile
-        .terrain
-        .iter()
-        .zip(profile.great_circle.iter())
-        .enumerate()
-    {
-        let distance = (profile.distance * i as f64) as usize / (profile.terrain.len() - 1);
-        let longitude = point.x();
-        let latitude = point.y();
-        writeln!(stdout, "{distance},{longitude},{latitude},{elevation}",)?;
+    writeln!(stdout, "Distance,Longitude,Latitude,Los,Elevation")?;
+    if let Some(profile) = profile {
+        for (i, ((elevation, point), los)) in profile
+            .terrain
+            .iter()
+            .zip(profile.great_circle.iter())
+            .zip(profile.los.iter())
+            .enumerate()
+        {
+            let distance = profile.step_size_m * i as f64;
+            let longitude = point.x();
+            let latitude = point.y();
+            writeln!(
+                stdout,
+                "{distance},{longitude},{latitude},{los},{elevation}",
+            )?;
+        }
+    } else {
+        rfprop::init(Path::new("/Volumes/s3/3-arcsecond/bsdf/"), false)?;
+        let profile = rfprop::terrain_profile(
+            cli.start.0.y,
+            cli.start.0.x,
+            cli.start.1 as f64,
+            cli.dest.0.y,
+            cli.dest.0.x,
+            cli.dest.1 as f64,
+            900e6,
+            cli.normalize,
+        );
+        for ((distance, los), elevation) in profile
+            .distance
+            .iter()
+            .zip(profile.los.iter())
+            .zip(profile.terrain.iter())
+        {
+            writeln!(stdout, "{distance},0,0,{los},{elevation}",)?;
+        }
     }
     Ok(())
 }

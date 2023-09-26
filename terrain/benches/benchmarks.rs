@@ -61,8 +61,10 @@ fn memmap_terrain_profile(c: &mut Criterion) {
             b.iter(|| {
                 Profile::builder()
                     .start(*s)
-                    .step_size(*d)
+                    .max_step(*d)
                     .end(*e)
+                    .earth_curve(true)
+                    .normalize(true)
                     .build(t)
                     .unwrap()
             })
@@ -76,7 +78,7 @@ fn memmap_terrain_profile(c: &mut Criterion) {
             b.iter(|| {
                 Profile::builder()
                     .start(*s)
-                    .step_size(*d)
+                    .max_step(*d)
                     .end(*e)
                     .build(t)
                     .unwrap()
@@ -91,7 +93,7 @@ fn memmap_terrain_profile(c: &mut Criterion) {
             b.iter(|| {
                 Profile::builder()
                     .start(*s)
-                    .step_size(*d)
+                    .max_step(*d)
                     .end(*e)
                     .build(t)
                     .unwrap()

@@ -4,21 +4,33 @@ use geo::geometry::Coord;
 use std::{path::PathBuf, str::FromStr};
 
 /// A tool for enerating terrain profiles.
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub struct Cli {
     /// Directory containing SRTM hgt tiles.
     #[arg(short, long)]
     pub srtm_dir: PathBuf,
 
-    /// Path incremental step size.
-    #[arg(short = 'z', long, default_value_t = 90.0)]
-    pub step_size: f64,
+    #[arg(long, default_value_t = false)]
+    pub rfprop: bool,
 
-    /// Start "lat,lon,alt"
+    /// Maximum path incremental step size, in meters.
+    #[arg(short, long, default_value_t = 90.0)]
+    pub max_step: f64,
+
+    /// Add earth curvature to terrain values.
+    #[arg(short, long, default_value_t = false)]
+    pub earth_curve: bool,
+
+    /// Center earth curve so that midpoint between start and end is
+    /// the highest.
+    #[arg(short, long, default_value_t = false)]
+    pub normalize: bool,
+
+    /// Start "lat,lon,alt", where 'alt' is meters above ground.
     #[arg(long)]
     pub start: LatLonAlt,
 
-    /// Destination "lat,lon"
+    /// Destination "lat,lon,alt", where 'alt' is meters above ground.
     #[arg(long)]
     pub dest: LatLonAlt,
 
@@ -48,7 +60,7 @@ impl FromStr for LatLonAlt {
     }
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Subcommand, Clone)]
 pub enum Command {
     /// Print terrain values to stdout.
     Csv,
