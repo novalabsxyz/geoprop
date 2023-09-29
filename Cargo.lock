@@ -746,6 +746,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "geoplot"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "env_logger",
+ "geo",
+ "log",
+ "nasadem",
+ "plotters",
+ "rfprop",
+ "serde",
+ "serde_json",
+ "terrain",
+ "textplots",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1109,24 +1127,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26072860ba924cbfa98ea39c8c19b4dd6a4a25423dbdf219c1eca91aa0cf6964"
 
 [[package]]
-name = "plot"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "env_logger",
- "geo",
- "log",
- "nasadem",
- "plotters",
- "rfprop",
- "serde",
- "serde_json",
- "terrain",
- "textplots",
-]
-
-[[package]]
 name = "plotters"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1286,6 +1286,7 @@ checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
 [[package]]
 name = "rfprop"
 version = "0.1.0"
+source = "git+https://github.com/JayKickliter/Signal-Server?branch=master#a8ad046754ce67658c6de6b037bfec0ebffcf72a"
 dependencies = [
  "cmake",
  "cxx",

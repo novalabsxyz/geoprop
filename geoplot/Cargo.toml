@@ -1,5 +1,5 @@
 [package]
-name    = "plot"
+name    = "geoplot"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,7 +11,7 @@ geo        = { workspace = true }
 log        = { workspace = true }
 nasadem    = { path = "../nasadem" }
 plotters   = { workspace = true }
-rfprop     = { git = "git@github.com:JayKickliter/Signal-Server.git", branch = "master" }
+rfprop     = { git = "https://github.com/JayKickliter/Signal-Server", branch = "master" }
 serde      = { workspace = true }
 serde_json = { workspace = true }
 terrain    = { path = "../terrain" }
