@@ -3,6 +3,7 @@
 use crate::TerrainError;
 use dashmap::DashMap;
 use geo::geometry::Coord;
+use log::debug;
 use nasadem::{NasademError, Tile};
 use std::{
     io::ErrorKind,
@@ -64,7 +65,7 @@ impl Tiles {
                 Err(TerrainError::Nasadem(NasademError::Io(e)))
                     if e.kind() == ErrorKind::NotFound =>
                 {
-                    Ok(Arc::new(Self::load_tombstone(coord)))
+                    Ok(Arc::new(Self::load_tombstone(sw_corner)))
                 }
                 Err(e) => Err(e),
             })
@@ -77,14 +78,15 @@ impl Tiles {
     fn load_tile(&self, sw_corner: Coord<i16>) -> Result<Tile, TerrainError> {
         let file_name = file_name(sw_corner);
         let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
-
+        debug!("loading {tile_path:?}");
         match self.tile_mode {
             TileMode::InMem => Ok(Tile::load(tile_path)?),
             TileMode::MemMap => Ok(Tile::memmap(tile_path)?),
         }
     }
 
-    fn load_tombstone(sw_corner: Coord<C>) -> Tile {
+    fn load_tombstone(sw_corner: Coord<i16>) -> Tile {
+        debug!("loading tombstone in lieu of missing tile for {sw_corner:?}");
         Tile::tombstone(sw_corner)
     }
 }

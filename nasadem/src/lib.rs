@@ -188,13 +188,18 @@ impl Tile {
         })
     }
 
-    pub fn tombstone(sw_corner: Coord<C>) -> Self {
+    pub fn tombstone(sw_corner: Coord<i16>) -> Self {
+        let sw_corner = Coord {
+            x: sw_corner.x as C,
+            y: sw_corner.y as C,
+        };
+
         let (resolution, dimensions) = (3, (1201, 1201));
 
         #[allow(clippy::cast_precision_loss)]
         let ne_corner = Coord {
-            y: sw_corner.y + (dimensions.0 as C * C::from(resolution)) / ARCSEC_PER_DEG,
-            x: sw_corner.x + (dimensions.1 as C * C::from(resolution)) / ARCSEC_PER_DEG,
+            y: sw_corner.y as C + (dimensions.0 as C * C::from(resolution)) / ARCSEC_PER_DEG,
+            x: sw_corner.x as C + (dimensions.1 as C * C::from(resolution)) / ARCSEC_PER_DEG,
         };
 
         let sample_store = SampleStore::Tombstone;
