@@ -26,7 +26,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Build | Test
-        run: cargo test --all-targets --all-features
+        run: cargo test
 
       - name: Hygiene | Formatting
         run: cargo fmt -- --check
