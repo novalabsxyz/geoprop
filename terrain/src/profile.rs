@@ -307,7 +307,6 @@ mod tests {
             .end(end)
             .build(&tile_source)
             .unwrap();
-        println!("{:#?}", profile);
         assert_eq!(36, profile.great_circle.len());
     }
 }
