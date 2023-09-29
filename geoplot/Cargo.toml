@@ -8,9 +8,6 @@ anyhow     = "1"
 clap       = { workspace = true }
 env_logger = { workspace = true }
 geo        = { workspace = true }
-log        = { workspace = true }
-nasadem    = { path = "../nasadem" }
-plotters   = { workspace = true }
 rfprop     = { git = "https://github.com/JayKickliter/Signal-Server", branch = "master" }
 serde      = { workspace = true }
 serde_json = { workspace = true }
