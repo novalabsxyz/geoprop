@@ -244,9 +244,13 @@ impl Tile {
 
     /// Returns the sample at the given geo coordinates.
     pub fn get(&self, coord: Coord<C>) -> Option<i16> {
-        let idx_2d @ (idx_x, idx_y) = self.coord_to_xy(coord);
-        if idx_x < self.dimensions.0 && idx_y < self.dimensions.1 {
-            let idx_1d = self.xy_to_linear_index(idx_2d);
+        let (idx_x, idx_y) = self.coord_to_xy(coord);
+        if 0 <= idx_x
+            && idx_x < self.dimensions.0 as isize
+            && 0 <= idx_y
+            && idx_y < self.dimensions.1 as isize
+        {
+            let idx_1d = self.xy_to_linear_index((idx_x as usize, idx_y as usize));
             Some(self.samples.get_unchecked(idx_1d))
         } else {
             None
@@ -255,8 +259,8 @@ impl Tile {
 
     /// Returns the sample at the given geo coordinates.
     pub fn get_unchecked(&self, coord: Coord<C>) -> i16 {
-        let idx_2d = self.coord_to_xy(coord);
-        let idx_1d = self.xy_to_linear_index(idx_2d);
+        let (idx_x, idx_y) = self.coord_to_xy(coord);
+        let idx_1d = self.xy_to_linear_index((idx_x as usize, idx_y as usize));
         self.samples.get_unchecked(idx_1d)
     }
 
@@ -273,15 +277,15 @@ impl Tile {
         self.samples.get_unchecked(idx_1d)
     }
 
-    fn coord_to_xy(&self, coord: Coord<C>) -> (usize, usize) {
+    fn coord_to_xy(&self, coord: Coord<C>) -> (isize, isize) {
         let c = ARCSEC_PER_DEG / C::from(self.resolution);
         // TODO: do we need to compensate for cell width. If so, does
         //       the following accomplish that? It seems to in the
         //       Mt. Washington test.
         let sample_center_compensation = 1. / (c * 2.);
         let cc = sample_center_compensation;
-        let x = ((coord.x - self.sw_corner_center.x + cc) * c) as usize;
-        let y = ((coord.y - self.sw_corner_center.y + cc) * c) as usize;
+        let x = ((coord.x - self.sw_corner_center.x + cc) * c) as isize;
+        let y = ((coord.y - self.sw_corner_center.y + cc) * c) as isize;
         (x, y)
     }
 
