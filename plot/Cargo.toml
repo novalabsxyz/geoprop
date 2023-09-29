@@ -11,8 +11,8 @@ geo        = { workspace = true }
 log        = { workspace = true }
 nasadem    = { path = "../nasadem" }
 plotters   = { workspace = true }
+rfprop     = { git = "git@github.com:JayKickliter/Signal-Server.git", branch = "master" }
 serde      = { workspace = true }
 serde_json = { workspace = true }
 terrain    = { path = "../terrain" }
 textplots  = { workspace = true }
-rfprop     = { path = "/Users/jay/forks/Signal-Server/rust/rfprop" }
