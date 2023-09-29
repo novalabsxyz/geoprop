@@ -35,12 +35,12 @@ pub struct Tile {
     /// Southwest corner of the tile.
     ///
     /// Specificlly, the _center_ of the SW most sample of the tile.
-    sw_corner: Coord<C>,
+    sw_corner_center: Coord<C>,
 
     /// Northeast corner of the tile.
     ///
     /// Specificlly, the _center_ of the NE most sample of the tile.
-    ne_corner: Coord<C>,
+    ne_corner_center: Coord<C>,
 
     /// Arcseconds per sample.
     resolution: u8,
@@ -109,7 +109,7 @@ impl Tile {
     /// Returns a Tile read into memory from the file at `path`.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, NasademError> {
         let (resolution, dimensions @ (cols, rows)) = extract_resolution(&path)?;
-        let sw_corner = {
+        let sw_corner_center = {
             let Coord { x, y } = parse_sw_corner(&path)?;
             Coord {
                 x: C::from(x),
@@ -118,14 +118,14 @@ impl Tile {
         };
 
         #[allow(clippy::cast_precision_loss)]
-        let ne_corner = Coord {
-            y: sw_corner.y + (dimensions.0 as C * C::from(resolution)) / ARCSEC_PER_DEG,
-            x: sw_corner.x + (dimensions.1 as C * C::from(resolution)) / ARCSEC_PER_DEG,
+        let ne_corner_center = Coord {
+            y: sw_corner_center.y + (dimensions.0 as C * C::from(resolution)) / ARCSEC_PER_DEG,
+            x: sw_corner_center.x + (dimensions.1 as C * C::from(resolution)) / ARCSEC_PER_DEG,
         };
 
         let mut file = BufReader::new(File::open(path)?);
 
-        let sample_store = {
+        let samples = {
             let mut sample_store = Vec::with_capacity(cols * rows);
 
             for _ in 0..(cols * rows) {
@@ -141,20 +141,20 @@ impl Tile {
         let max_elevation = i16::MAX.into();
 
         Ok(Self {
-            sw_corner,
-            ne_corner,
+            sw_corner_center,
+            ne_corner_center,
             resolution,
             dimensions,
             min_elevation,
             max_elevation,
-            samples: sample_store,
+            samples,
         })
     }
 
     /// Returns a Tile using the memory-mapped file as storage.
     pub fn memmap<P: AsRef<Path>>(path: P) -> Result<Self, NasademError> {
         let (resolution, dimensions @ (cols, rows)) = extract_resolution(&path)?;
-        let sw_corner = {
+        let sw_corner_center = {
             let Coord { x, y } = parse_sw_corner(&path)?;
             Coord {
                 x: C::from(x),
@@ -163,12 +163,12 @@ impl Tile {
         };
 
         #[allow(clippy::cast_precision_loss)]
-        let ne_corner = Coord {
-            y: sw_corner.y + (cols as C * C::from(resolution)) / ARCSEC_PER_DEG,
-            x: sw_corner.x + (rows as C * C::from(resolution)) / ARCSEC_PER_DEG,
+        let ne_corner_center = Coord {
+            y: sw_corner_center.y + (cols as C * C::from(resolution)) / ARCSEC_PER_DEG,
+            x: sw_corner_center.x + (rows as C * C::from(resolution)) / ARCSEC_PER_DEG,
         };
 
-        let sample_store = {
+        let samples = {
             let file = File::open(path)?;
             let mmap = unsafe { Mmap::map(&file)? };
             SampleStore::MemMap(mmap)
@@ -178,37 +178,42 @@ impl Tile {
         let max_elevation = i16::MAX.into();
 
         Ok(Self {
-            sw_corner,
-            ne_corner,
+            sw_corner_center,
+            ne_corner_center,
             resolution,
             dimensions,
             min_elevation,
             max_elevation,
-            samples: sample_store,
+            samples,
         })
     }
 
-    pub fn tombstone(sw_corner: Coord<C>) -> Self {
+    pub fn tombstone(sw_corner: Coord<i16>) -> Self {
+        let sw_corner_center = Coord {
+            x: sw_corner.x as C,
+            y: sw_corner.y as C,
+        };
+
         let (resolution, dimensions) = (3, (1201, 1201));
 
         #[allow(clippy::cast_precision_loss)]
-        let ne_corner = Coord {
-            y: sw_corner.y + (dimensions.0 as C * C::from(resolution)) / ARCSEC_PER_DEG,
-            x: sw_corner.x + (dimensions.1 as C * C::from(resolution)) / ARCSEC_PER_DEG,
+        let ne_corner_center = Coord {
+            y: sw_corner_center.y as C + (dimensions.0 as C * C::from(resolution)) / ARCSEC_PER_DEG,
+            x: sw_corner_center.x as C + (dimensions.1 as C * C::from(resolution)) / ARCSEC_PER_DEG,
         };
 
-        let sample_store = SampleStore::Tombstone;
+        let samples = SampleStore::Tombstone;
         let min_elevation = i16::MAX.into();
         let max_elevation = i16::MAX.into();
 
         Self {
-            sw_corner,
-            ne_corner,
+            sw_corner_center,
+            ne_corner_center,
             resolution,
             dimensions,
             min_elevation,
             max_elevation,
-            samples: sample_store,
+            samples,
         }
     }
 
@@ -239,9 +244,13 @@ impl Tile {
 
     /// Returns the sample at the given geo coordinates.
     pub fn get(&self, coord: Coord<C>) -> Option<i16> {
-        let idx_2d @ (idx_x, idx_y) = self.coord_to_xy(coord);
-        if idx_x < self.dimensions.0 && idx_y < self.dimensions.1 {
-            let idx_1d = self.xy_to_linear_index(idx_2d);
+        let (idx_x, idx_y) = self.coord_to_xy(coord);
+        if 0 <= idx_x
+            && idx_x < self.dimensions.0 as isize
+            && 0 <= idx_y
+            && idx_y < self.dimensions.1 as isize
+        {
+            let idx_1d = self.xy_to_linear_index((idx_x as usize, idx_y as usize));
             Some(self.samples.get_unchecked(idx_1d))
         } else {
             None
@@ -250,8 +259,8 @@ impl Tile {
 
     /// Returns the sample at the given geo coordinates.
     pub fn get_unchecked(&self, coord: Coord<C>) -> i16 {
-        let idx_2d = self.coord_to_xy(coord);
-        let idx_1d = self.xy_to_linear_index(idx_2d);
+        let (idx_x, idx_y) = self.coord_to_xy(coord);
+        let idx_1d = self.xy_to_linear_index((idx_x as usize, idx_y as usize));
         self.samples.get_unchecked(idx_1d)
     }
 
@@ -268,15 +277,15 @@ impl Tile {
         self.samples.get_unchecked(idx_1d)
     }
 
-    fn coord_to_xy(&self, coord: Coord<C>) -> (usize, usize) {
+    fn coord_to_xy(&self, coord: Coord<C>) -> (isize, isize) {
         let c = ARCSEC_PER_DEG / C::from(self.resolution);
         // TODO: do we need to compensate for cell width. If so, does
         //       the following accomplish that? It seems to in the
         //       Mt. Washington test.
         let sample_center_compensation = 1. / (c * 2.);
         let cc = sample_center_compensation;
-        let x = ((coord.x - self.sw_corner.x + cc) * c) as usize;
-        let y = ((coord.y - self.sw_corner.y + cc) * c) as usize;
+        let x = ((coord.x - self.sw_corner_center.x + cc) * c) as isize;
+        let y = ((coord.y - self.sw_corner_center.y + cc) * c) as isize;
         (x, y)
     }
 
@@ -293,8 +302,8 @@ impl Tile {
     fn xy_to_polygon(&self, (x, y): (usize, usize)) -> Polygon<C> {
         #[allow(clippy::cast_precision_loss)]
         let center = Coord {
-            x: self.sw_corner.x + (y as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
-            y: self.sw_corner.y + (x as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
+            x: self.sw_corner_center.x + (y as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
+            y: self.sw_corner_center.y + (x as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
         };
         polygon(&center, C::from(self.resolution))
     }
@@ -416,6 +425,21 @@ mod _1_arc_second {
     }
 
     #[test]
+    fn test_out_of_bounds_get_returns_none() {
+        let mut path = one_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let tile = Tile::load(path).unwrap();
+        // Assert coordinate a smidge north of tile returns None.
+        assert_eq!(tile.get(Coord { x: -71.5, y: 45.1 }), None);
+        // Assert coordinate a smidge east of tile returns None.
+        assert_eq!(tile.get(Coord { x: -70.9, y: 44.5 }), None);
+        // Assert coordinate a smidge south of tile returns None.
+        assert_eq!(tile.get(Coord { x: -71.5, y: 43.9 }), None);
+        // Assert coordinate a smidge west of tile returns None.
+        assert_eq!(tile.get(Coord { x: -72.1, y: 44.5 }), None);
+    }
+
+    #[test]
     fn test_tile_index() {
         let mut path = one_arcsecond_dir();
         path.push("N44W072.hgt");
@@ -502,6 +526,21 @@ mod _3_arc_second {
         let mut path = three_arcsecond_dir();
         path.push("N44W072.hgt");
         Tile::load(path).unwrap();
+    }
+
+    #[test]
+    fn test_out_of_bounds_get_returns_none() {
+        let mut path = three_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let tile = Tile::load(path).unwrap();
+        // Assert coordinate a smidge north of tile returns None.
+        assert_eq!(tile.get(Coord { x: -71.5, y: 45.1 }), None);
+        // Assert coordinate a smidge east of tile returns None.
+        assert_eq!(tile.get(Coord { x: -70.9, y: 44.5 }), None);
+        // Assert coordinate a smidge south of tile returns None.
+        assert_eq!(tile.get(Coord { x: -71.5, y: 43.9 }), None);
+        // Assert coordinate a smidge west of tile returns None.
+        assert_eq!(tile.get(Coord { x: -72.1, y: 44.5 }), None);
     }
 
     #[test]
