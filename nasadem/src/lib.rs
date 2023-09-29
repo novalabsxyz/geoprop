@@ -421,6 +421,21 @@ mod _1_arc_second {
     }
 
     #[test]
+    fn test_out_of_bounds_get_returns_none() {
+        let mut path = one_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let tile = Tile::load(path).unwrap();
+        // Assert coordinate a smidge north of tile returns None.
+        assert_eq!(tile.get(Coord { x: -71.5, y: 45.1 }), None);
+        // Assert coordinate a smidge east of tile returns None.
+        assert_eq!(tile.get(Coord { x: -70.9, y: 44.5 }), None);
+        // Assert coordinate a smidge south of tile returns None.
+        assert_eq!(tile.get(Coord { x: -71.5, y: 43.9 }), None);
+        // Assert coordinate a smidge west of tile returns None.
+        assert_eq!(tile.get(Coord { x: -72.1, y: 44.5 }), None);
+    }
+
+    #[test]
     fn test_tile_index() {
         let mut path = one_arcsecond_dir();
         path.push("N44W072.hgt");
@@ -507,6 +522,21 @@ mod _3_arc_second {
         let mut path = three_arcsecond_dir();
         path.push("N44W072.hgt");
         Tile::load(path).unwrap();
+    }
+
+    #[test]
+    fn test_out_of_bounds_get_returns_none() {
+        let mut path = three_arcsecond_dir();
+        path.push("N44W072.hgt");
+        let tile = Tile::load(path).unwrap();
+        // Assert coordinate a smidge north of tile returns None.
+        assert_eq!(tile.get(Coord { x: -71.5, y: 45.1 }), None);
+        // Assert coordinate a smidge east of tile returns None.
+        assert_eq!(tile.get(Coord { x: -70.9, y: 44.5 }), None);
+        // Assert coordinate a smidge south of tile returns None.
+        assert_eq!(tile.get(Coord { x: -71.5, y: 43.9 }), None);
+        // Assert coordinate a smidge west of tile returns None.
+        assert_eq!(tile.get(Coord { x: -72.1, y: 44.5 }), None);
     }
 
     #[test]
