@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use geo::geometry::Coord;
 use std::{path::PathBuf, str::FromStr};
 
-/// A tool for enerating terrain profiles.
+/// Generate point-to-point terrain profiles.
 #[derive(Parser, Debug, Clone)]
 pub struct Cli {
     /// Directory containing SRTM hgt tiles.
@@ -68,9 +68,6 @@ pub enum Command {
     /// Print terrain values to stdout.
     Json,
 
-    /// Export an SVG.
-    Plot {
-        /// SVG file path.
-        out: Option<PathBuf>,
-    },
+    /// Plot to terminal.
+    Plot,
 }

@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-approx     = { workspace = true }
 dashmap    = { workspace = true }
 fast-math  = { workspace = true }
 geo        = { workspace = true }
@@ -14,8 +13,8 @@ num-traits = { workspace = true }
 thiserror  = { workspace = true }
 
 [dev-dependencies]
+approx    = { workspace = true }
 criterion = { workspace = true }
-plotters  = { workspace = true }
 
 [target.'cfg(not(target_env = "msvc"))'.dev-dependencies]
 tikv-jemallocator = "0.5"
