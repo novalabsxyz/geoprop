@@ -510,7 +510,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "geoplot"
+name = "geopath"
 version = "0.1.0"
 dependencies = [
  "anyhow",

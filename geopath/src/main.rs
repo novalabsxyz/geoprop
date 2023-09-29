@@ -42,16 +42,15 @@ fn main() -> Result<(), AnyError> {
 
     match cmd {
         CliCmd::Csv => print_csv(terrain_profile, cli.clone()),
-        CliCmd::Plot { out: Some(out) } => plot_svg(terrain_profile.unwrap(), out),
-        CliCmd::Plot { out: None } => plot_ascii(terrain_profile.unwrap()),
-        CliCmd::Json => json(terrain_profile.unwrap()),
+        CliCmd::Plot => plot_ascii(terrain_profile.unwrap()),
+        CliCmd::Json => print_json(terrain_profile.unwrap()),
     }
 }
 
 /// # Example with gnuplot
 ///
 /// ```sh
-/// cargo run --release -- --srtm-dir=data/nasadem/3arcsecond/ -z90 --start=44.28309806603165,-71.30830716441369,0 --dest=44.25628098424278,-71.2972073283768,0 csv | tr ',' ' ' | gnuplot -p -e "plot '-' using 1:4 with line"
+/// cargo run -- --srtm-dir=data/nasadem/3arcsecond/ --max-step=90 --earth-curve --normalize --start=0,0,100 --dest=0,1,0 csv | tr ',' ' ' > ~/.tmp/plot && gnuplot -p -e "plot for [col=4:5] '~/.tmp/plot' using 1:col with lines"
 /// ```
 fn print_csv(profile: Option<Profile<f64>>, cli: Cli) -> Result<(), AnyError> {
     let mut stdout = std::io::stdout().lock();
@@ -96,10 +95,6 @@ fn print_csv(profile: Option<Profile<f64>>, cli: Cli) -> Result<(), AnyError> {
     Ok(())
 }
 
-fn plot_svg(_profile: Profile<f64>, _out: &Path) -> Result<(), AnyError> {
-    unimplemented!()
-}
-
 fn plot_ascii(profile: Profile<f64>) -> Result<(), AnyError> {
     let plot_data: Vec<(f32, f32)> = profile
         .terrain
@@ -107,13 +102,13 @@ fn plot_ascii(profile: Profile<f64>) -> Result<(), AnyError> {
         .enumerate()
         .map(|(idx, elev)| (f32::from(idx as u16), f32::from(*elev)))
         .collect();
-    Chart::new(400, 150, 0.0, plot_data.len() as f32)
+    Chart::new(300, 150, 0.0, plot_data.len() as f32)
         .lineplot(&Shape::Lines(&plot_data))
         .display();
     Ok(())
 }
 
-fn json(profile: Profile<f64>) -> Result<(), AnyError> {
+fn print_json(profile: Profile<f64>) -> Result<(), AnyError> {
     #[derive(Serialize)]
     struct JsonEntry {
         location: [f64; 2],
