@@ -56,14 +56,13 @@ fn print_csv(profile: Option<Profile<f64>>, cli: Cli) -> Result<(), AnyError> {
     let mut stdout = std::io::stdout().lock();
     writeln!(stdout, "Distance,Longitude,Latitude,Los,Elevation")?;
     if let Some(profile) = profile {
-        for (i, ((elevation, point), los)) in profile
+        for (((elevation, point), los), distance) in profile
             .terrain
             .iter()
             .zip(profile.great_circle.iter())
             .zip(profile.los.iter())
-            .enumerate()
+            .zip(profile.distances_m.iter())
         {
-            let distance = profile.step_size_m * i as f64;
             let longitude = point.x();
             let latitude = point.y();
             writeln!(
