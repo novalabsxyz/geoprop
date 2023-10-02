@@ -39,7 +39,7 @@ pub struct Cli {
 }
 
 #[derive(Clone, Debug)]
-pub struct LatLonAlt(pub Coord<f64>, pub i16);
+pub struct LatLonAlt(pub Coord<f64>, pub f64);
 
 impl FromStr for LatLonAlt {
     type Err = AnyError;
@@ -55,7 +55,7 @@ impl FromStr for LatLonAlt {
         };
         let lat = f64::from_str(lat_str)?;
         let lon = f64::from_str(lon_str)?;
-        let alt = i16::from_str(alt_str)?;
+        let alt = f64::from_str(alt_str)?;
         Ok(Self(Coord { y: lat, x: lon }, alt))
     }
 }

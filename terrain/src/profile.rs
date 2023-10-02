@@ -21,7 +21,7 @@ pub struct Profile<C: CoordFloat = f32> {
 
     /// Elevation at each step along the great circle route from
     /// `start` to `end`.
-    pub terrain_elev_m: Vec<i16>,
+    pub terrain_elev_m: Vec<C>,
 
     /// A straight line from `start` to `end`.
     pub los_elev_m: Vec<C>,
@@ -36,8 +36,8 @@ where
             start: None,
             max_step_m: None,
             end: None,
-            start_alt_m: 0,
-            end_alt_m: 0,
+            start_alt_m: C::zero(),
+            end_alt_m: C::zero(),
             earth_curve: false,
             normalize: false,
         }
@@ -55,10 +55,10 @@ pub struct ProfileBuilder<C: CoordFloat = f32> {
     end: Option<Coord<C>>,
 
     /// Starting altitude above ground (meters, defaults to 0).
-    start_alt_m: i16,
+    start_alt_m: C,
 
     /// Starting altitude above ground (meters, defaults to 0).
-    end_alt_m: i16,
+    end_alt_m: C,
 
     /// Add earth curvature (defaults to false).
     earth_curve: bool,
@@ -81,7 +81,7 @@ where
     }
 
     /// Starting altitude above ground (meters, defaults to 0).
-    pub fn start_alt(mut self, meters: i16) -> Self {
+    pub fn start_alt(mut self, meters: C) -> Self {
         self.start_alt_m = meters;
         self
     }
@@ -99,7 +99,7 @@ where
     }
 
     /// Starting altitude above ground (meters, defaults to 0).
-    pub fn end_alt(mut self, meters: i16) -> Self {
+    pub fn end_alt(mut self, meters: C) -> Self {
         self.end_alt_m = meters;
         self
     }
@@ -152,11 +152,11 @@ where
                     y: point.0.y.into(),
                 };
                 if let Some(elevation) = tile.get(coord) {
-                    terrain.push(elevation);
+                    terrain.push(C::from(elevation).unwrap());
                 } else {
                     tile = tiles.get(coord)?;
                     let elevation = tile.get_unchecked(coord);
-                    terrain.push(elevation);
+                    terrain.push(C::from(elevation).unwrap());
                 }
             }
 
@@ -172,10 +172,10 @@ where
                 // https://www.trailnotes.org/SizeOfTheEarth/
                 let earth_radius = C::from(crate::constants::MEAN_EARTH_RADIUS).unwrap();
                 let start_elev_alt =
-                    C::from(*terrain_elev_m.first().unwrap() + self.start_alt_m).unwrap();
+                    *terrain_elev_m.first().unwrap() + C::from(self.start_alt_m).unwrap();
                 let start_radius_m = earth_radius + start_elev_alt;
                 let end_elev_alt =
-                    C::from(*terrain_elev_m.last().unwrap() + self.end_alt_m).unwrap();
+                    *terrain_elev_m.last().unwrap() + C::from(self.end_alt_m).unwrap();
                 let elev_angle_rad = elevation_angle(start_elev_alt, distance_m, end_elev_alt);
 
                 let (nb, nm) = if self.normalize {
@@ -198,7 +198,7 @@ where
                     } else {
                         radius_m - c_unk_unit
                     };
-                    *elev_m = height_m.as_();
+                    *elev_m = height_m;
                 }
             }
 
@@ -206,8 +206,8 @@ where
         };
 
         let los_elev_m = linspace(
-            C::from(*terrain_elev_m.first().unwrap() + self.start_alt_m).unwrap(),
-            C::from(*terrain_elev_m.last().unwrap() + self.end_alt_m).unwrap(),
+            *terrain_elev_m.first().unwrap() + C::from(self.start_alt_m).unwrap(),
+            *terrain_elev_m.last().unwrap() + C::from(self.end_alt_m).unwrap(),
             terrain_elev_m.len(),
         )
         .collect();
