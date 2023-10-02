@@ -21,10 +21,10 @@ pub struct Profile<C: CoordFloat = f32> {
 
     /// Elevation at each step along the great circle route from
     /// `start` to `end`.
-    pub terrain: Vec<i16>,
+    pub terrain_elev_m: Vec<i16>,
 
     /// A straight line from `start` to `end`.
-    pub los: Vec<C>,
+    pub los_elev_m: Vec<C>,
 }
 
 impl<C> Profile<C>
@@ -138,7 +138,7 @@ where
             (great_circle, runtime)
         };
 
-        let (mut terrain, terrain_runtime) = {
+        let (mut terrain_elev_m, terrain_runtime) = {
             let mut terrain = Vec::with_capacity(great_circle.len());
             let now = std::time::Instant::now();
             let mut tile = tiles.get(Coord {
@@ -164,16 +164,18 @@ where
             (terrain, runtime)
         };
 
-        let distances_m: Vec<C> = linspace(C::zero(), distance_m, terrain.len()).collect();
+        let distances_m: Vec<C> = linspace(C::zero(), distance_m, terrain_elev_m.len()).collect();
 
         let _earth_curve_runtime = {
             let now = std::time::Instant::now();
             if self.earth_curve {
                 // https://www.trailnotes.org/SizeOfTheEarth/
                 let earth_radius = C::from(crate::constants::MEAN_EARTH_RADIUS).unwrap();
-                let start_elev_alt = C::from(*terrain.first().unwrap() + self.start_alt_m).unwrap();
+                let start_elev_alt =
+                    C::from(*terrain_elev_m.first().unwrap() + self.start_alt_m).unwrap();
                 let start_radius_m = earth_radius + start_elev_alt;
-                let end_elev_alt = C::from(*terrain.last().unwrap() + self.end_alt_m).unwrap();
+                let end_elev_alt =
+                    C::from(*terrain_elev_m.last().unwrap() + self.end_alt_m).unwrap();
                 let elev_angle_rad = elevation_angle(start_elev_alt, distance_m, end_elev_alt);
 
                 let (nb, nm) = if self.normalize {
@@ -184,7 +186,7 @@ where
                     (C::zero(), C::zero())
                 };
 
-                for (&d_distance_m, elev_m) in distances_m.iter().zip(terrain.iter_mut()) {
+                for (&d_distance_m, elev_m) in distances_m.iter().zip(terrain_elev_m.iter_mut()) {
                     let radius_m = C::from(*elev_m).unwrap() + earth_radius;
                     // Approximate angle when radius is much larger than distance.
                     let chord_angle_rad = d_distance_m / radius_m;
@@ -203,10 +205,10 @@ where
             now.elapsed()
         };
 
-        let los = linspace(
-            C::from(*terrain.first().unwrap() + self.start_alt_m).unwrap(),
-            C::from(*terrain.last().unwrap() + self.end_alt_m).unwrap(),
-            terrain.len(),
+        let los_elev_m = linspace(
+            C::from(*terrain_elev_m.first().unwrap() + self.start_alt_m).unwrap(),
+            C::from(*terrain_elev_m.last().unwrap() + self.end_alt_m).unwrap(),
+            terrain_elev_m.len(),
         )
         .collect();
 
@@ -220,8 +222,8 @@ where
         Ok(Profile {
             distances_m,
             great_circle,
-            terrain,
-            los,
+            terrain_elev_m,
+            los_elev_m,
         })
     }
 }

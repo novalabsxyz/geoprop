@@ -57,10 +57,10 @@ fn print_csv(profile: Option<Profile<f64>>, cli: Cli) -> Result<(), AnyError> {
     writeln!(stdout, "Distance,Longitude,Latitude,Los,Elevation")?;
     if let Some(profile) = profile {
         for (((elevation, point), los), distance) in profile
-            .terrain
+            .terrain_elev_m
             .iter()
             .zip(profile.great_circle.iter())
-            .zip(profile.los.iter())
+            .zip(profile.los_elev_m.iter())
             .zip(profile.distances_m.iter())
         {
             let longitude = point.x();
@@ -96,7 +96,7 @@ fn print_csv(profile: Option<Profile<f64>>, cli: Cli) -> Result<(), AnyError> {
 
 fn plot_ascii(profile: Profile<f64>) -> Result<(), AnyError> {
     let plot_data: Vec<(f32, f32)> = profile
-        .terrain
+        .terrain_elev_m
         .iter()
         .enumerate()
         .map(|(idx, elev)| (f32::from(idx as u16), f32::from(*elev)))
@@ -117,7 +117,7 @@ fn print_json(profile: Profile<f64>) -> Result<(), AnyError> {
     let reshaped: Vec<JsonEntry> = profile
         .great_circle
         .iter()
-        .zip(profile.terrain.iter())
+        .zip(profile.terrain_elev_m.iter())
         .map(|(point, elev)| JsonEntry {
             location: [point.x(), point.y()],
             elevation: *elev,
