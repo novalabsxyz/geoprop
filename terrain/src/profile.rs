@@ -12,14 +12,8 @@ use num_traits::{AsPrimitive, FloatConst, FromPrimitive};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Profile<C: CoordFloat = f32> {
-    /// Total distance from `start` to `end` in meters.
-    pub distance_m: C,
-
-    /// Actual intra-sample length. This value will always less than
-    /// or equal to the requested step size. The requested step size
-    /// will reduced to ensure that it evenly fits into the total
-    /// distance.
-    pub step_size_m: C,
+    /// Incremental path distance for all following vectors.
+    pub distances_m: Vec<C>,
 
     /// Location of step along the great circle route from `start` to
     /// `end`.
@@ -144,8 +138,6 @@ where
             (great_circle, runtime)
         };
 
-        let step_size_m = distance_m / C::from(great_circle.len() - 1).unwrap();
-
         let (mut terrain, terrain_runtime) = {
             let mut terrain = Vec::with_capacity(great_circle.len());
             let now = std::time::Instant::now();
@@ -172,6 +164,8 @@ where
             (terrain, runtime)
         };
 
+        let distances_m: Vec<C> = linspace(C::zero(), distance_m, terrain.len()).collect();
+
         let _earth_curve_runtime = {
             let now = std::time::Instant::now();
             if self.earth_curve {
@@ -190,8 +184,7 @@ where
                     (C::zero(), C::zero())
                 };
 
-                for (idx, elev_m) in terrain.iter_mut().enumerate() {
-                    let d_distance_m = C::from(idx).unwrap() * step_size_m;
+                for (&d_distance_m, elev_m) in distances_m.iter().zip(terrain.iter_mut()) {
                     let radius_m = C::from(*elev_m).unwrap() + earth_radius;
                     // Approximate angle when radius is much larger than distance.
                     let chord_angle_rad = d_distance_m / radius_m;
@@ -225,8 +218,7 @@ where
         );
 
         Ok(Profile {
-            distance_m,
-            step_size_m,
+            distances_m,
             great_circle,
             terrain,
             los,
