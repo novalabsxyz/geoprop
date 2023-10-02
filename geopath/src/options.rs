@@ -45,11 +45,13 @@ impl FromStr for LatLonAlt {
     type Err = AnyError;
     fn from_str(s: &str) -> Result<Self, AnyError> {
         let (lat_str, lon_str, alt_str) = {
-            let idx = s.find(',').ok_or(anyhow!("not a valid lat,lon,alt"))?;
+            let idx = s
+                .find(',')
+                .ok_or_else(|| anyhow!("not a valid lat,lon,alt"))?;
             let (lat_str, lon_alt_str) = s.split_at(idx);
             let idx = lon_alt_str[1..]
                 .find(',')
-                .ok_or(anyhow!("not a valid lat,lon,alt"))?;
+                .ok_or_else(|| anyhow!("not a valid lat,lon,alt"))?;
             let (lon_str, alt_str) = lon_alt_str[1..].split_at(idx);
             (lat_str, lon_str, &alt_str[1..])
         };

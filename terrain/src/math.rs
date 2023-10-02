@@ -7,7 +7,7 @@ use crate::constants::MEAN_EARTH_RADIUS;
 use geo::{CoordFloat, Point};
 use num_traits::{Float, FloatConst, FromPrimitive};
 
-pub(crate) struct HaversineIter<T: CoordFloat = f32> {
+pub struct HaversineIter<T: CoordFloat = f32> {
     start: Option<Point<T>>,
     end: Option<Point<T>>,
     params: HaversineParams<T>,
