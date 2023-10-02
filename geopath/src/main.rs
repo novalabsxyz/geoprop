@@ -75,10 +75,10 @@ fn print_csv(profile: Option<Profile<f64>>, cli: Cli) -> Result<(), AnyError> {
         let profile = rfprop::terrain_profile(
             cli.start.0.y,
             cli.start.0.x,
-            cli.start.1 as f64,
+            cli.start.1,
             cli.dest.0.y,
             cli.dest.0.x,
-            cli.dest.1 as f64,
+            cli.dest.1,
             900e6,
             cli.normalize,
         );
@@ -99,7 +99,7 @@ fn plot_ascii(profile: Profile<f64>) -> Result<(), AnyError> {
         .terrain_elev_m
         .iter()
         .enumerate()
-        .map(|(idx, elev)| (f32::from(idx as u16), f32::from(*elev)))
+        .map(|(idx, elev)| (f32::from(idx as u16), *elev as f32))
         .collect();
     Chart::new(300, 150, 0.0, plot_data.len() as f32)
         .lineplot(&Shape::Lines(&plot_data))
@@ -111,7 +111,7 @@ fn print_json(profile: Profile<f64>) -> Result<(), AnyError> {
     #[derive(Serialize)]
     struct JsonEntry {
         location: [f64; 2],
-        elevation: i16,
+        elevation: f64,
     }
 
     let reshaped: Vec<JsonEntry> = profile

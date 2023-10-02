@@ -67,9 +67,9 @@ enum SampleStore {
 impl SampleStore {
     fn get_unchecked(&self, index: usize) -> i16 {
         match self {
-            SampleStore::Tombstone => 0,
-            SampleStore::InMem(samples) => samples[index],
-            SampleStore::MemMap(raw) => {
+            Self::Tombstone => 0,
+            Self::InMem(samples) => samples[index],
+            Self::MemMap(raw) => {
                 let start = index * size_of::<u16>();
                 let end = start + size_of::<u16>();
                 let bytes = &mut &raw.as_ref()[start..end];
@@ -81,9 +81,9 @@ impl SampleStore {
     /// Returns the lowest elevation sample in this data.
     fn min(&self) -> i16 {
         match self {
-            SampleStore::Tombstone => 0,
-            SampleStore::InMem(samples) => samples.iter().max().copied().unwrap(),
-            SampleStore::MemMap(raw) => (*raw)
+            Self::Tombstone => 0,
+            Self::InMem(samples) => samples.iter().max().copied().unwrap(),
+            Self::MemMap(raw) => (*raw)
                 .chunks_exact(2)
                 .map(|mut bytes| (&mut bytes).read_i16::<BE>().unwrap())
                 .max()
@@ -94,9 +94,9 @@ impl SampleStore {
     /// Returns the highest elevation sample in this data.
     pub fn max(&self) -> i16 {
         match self {
-            SampleStore::Tombstone => 0,
-            SampleStore::InMem(samples) => samples.iter().max().copied().unwrap(),
-            SampleStore::MemMap(raw) => (*raw)
+            Self::Tombstone => 0,
+            Self::InMem(samples) => samples.iter().max().copied().unwrap(),
+            Self::MemMap(raw) => (*raw)
                 .chunks_exact(2)
                 .map(|mut bytes| (&mut bytes).read_i16::<BE>().unwrap())
                 .max()
