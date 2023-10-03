@@ -22,7 +22,7 @@ fn three_arcsecond_dir() -> std::path::PathBuf {
 fn memmap_terrain_profile_f32(c: &mut Criterion) {
     let tile_source = Tiles::new(three_arcsecond_dir(), TileMode::MemMap).unwrap();
 
-    let mut group = c.benchmark_group("Terrain Profile - f32");
+    let mut group = c.benchmark_group("Profile<f32>");
 
     let _2_4km = (
         coord!(x:-117.3519964316712f32, y:52.30693919915002f32),
@@ -43,7 +43,7 @@ fn memmap_terrain_profile_f32(c: &mut Criterion) {
     let _90m = 90.0;
 
     group.bench_with_input(
-        "2.4 km",
+        "2.4_km",
         &(&tile_source, _90m, _2_4km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
@@ -60,7 +60,7 @@ fn memmap_terrain_profile_f32(c: &mut Criterion) {
     );
 
     group.bench_with_input(
-        "67 km",
+        "67_km",
         &(&tile_source, _90m, _67km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
@@ -75,7 +75,7 @@ fn memmap_terrain_profile_f32(c: &mut Criterion) {
     );
 
     group.bench_with_input(
-        "103 km",
+        "103_km",
         &(&tile_source, _90m, _103km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
@@ -93,7 +93,7 @@ fn memmap_terrain_profile_f32(c: &mut Criterion) {
 fn memmap_terrain_profile_f64(c: &mut Criterion) {
     let tile_source = Tiles::new(three_arcsecond_dir(), TileMode::MemMap).unwrap();
 
-    let mut group = c.benchmark_group("Terrain Profile - f64");
+    let mut group = c.benchmark_group("Profile<f64>");
 
     let _2_4km = (
         coord!(x:-117.3519964316712f64, y:52.30693919915002f64),
@@ -114,7 +114,7 @@ fn memmap_terrain_profile_f64(c: &mut Criterion) {
     let _90m = 90.0;
 
     group.bench_with_input(
-        "2.4 km",
+        "2.4_km",
         &(&tile_source, _90m, _2_4km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
@@ -131,7 +131,7 @@ fn memmap_terrain_profile_f64(c: &mut Criterion) {
     );
 
     group.bench_with_input(
-        "67 km",
+        "67_km",
         &(&tile_source, _90m, _67km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
@@ -146,7 +146,7 @@ fn memmap_terrain_profile_f64(c: &mut Criterion) {
     );
 
     group.bench_with_input(
-        "103 km",
+        "103_km",
         &(&tile_source, _90m, _103km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
