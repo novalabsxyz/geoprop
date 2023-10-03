@@ -11,6 +11,7 @@ pub struct HaversineIter<T: CoordFloat = f32> {
     start: Option<Point<T>>,
     end: Option<Point<T>>,
     params: HaversineParams<T>,
+    step_size_m: T,
     interval: T,
     current_step: T,
 }
@@ -24,6 +25,7 @@ impl<T: CoordFloat> HaversineIter<T> {
         let HaversineParams { d, .. } = params;
         let total_distance = d * T::from(MEAN_EARTH_RADIUS).unwrap();
         let number_of_points = (total_distance / max_step_size).ceil();
+        let step_size_m = total_distance / number_of_points;
         let interval = T::one() / number_of_points;
         let current_step = T::zero();
 
@@ -31,9 +33,15 @@ impl<T: CoordFloat> HaversineIter<T> {
             start: Some(start),
             end: Some(end),
             params,
+            step_size_m,
             interval,
             current_step,
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn step_size_m(&self) -> T {
+        self.step_size_m
     }
 }
 
@@ -191,8 +199,10 @@ mod tests {
     fn test_haversine_iter() {
         let start = point!(x: -0.5, y: -0.5);
         let end = point!(x: 0.5, y: 0.5);
-        let step_size_m = 19_000.0;
-        let points = HaversineIter::new(start, step_size_m, end).collect::<Vec<_>>();
+        let step_size_m = 17472.510284442324;
+        let haversine = HaversineIter::new(start, step_size_m, end);
+        assert_eq!(haversine.step_size_m(), step_size_m);
+        let points = haversine.collect::<Vec<_>>();
         let expected = vec![
             point!(x:-0.5,y:-0.5),
             point!(x:-0.38888498879915234,y:-0.3888908388952553),
