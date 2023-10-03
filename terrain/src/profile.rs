@@ -8,7 +8,7 @@ use geo::{
     CoordFloat,
 };
 use log::debug;
-use num_traits::{FloatConst, FromPrimitive};
+use num_traits::{AsPrimitive, FloatConst, FromPrimitive};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Profile<C: CoordFloat = f32> {
@@ -120,7 +120,7 @@ where
 
     pub fn build(&self, tiles: &Tiles) -> Result<Profile<C>, TerrainError>
     where
-        C: Atan2 + FloatConst,
+        C: Atan2 + FloatConst + AsPrimitive<usize>,
     {
         let start = self.start.ok_or(TerrainError::Builder("start"))?;
         let max_step_m = self.max_step_m.ok_or(TerrainError::Builder("max_step"))?;

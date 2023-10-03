@@ -5,37 +5,33 @@
 
 use crate::constants::MEAN_EARTH_RADIUS;
 use geo::{CoordFloat, Point};
-use num_traits::{Float, FloatConst, FromPrimitive};
+use num_traits::{AsPrimitive, Float, FloatConst, FromPrimitive};
 
 pub struct HaversineIter<T: CoordFloat = f32> {
-    start: Option<Point<T>>,
-    end: Option<Point<T>>,
     params: HaversineParams<T>,
     step_size_m: T,
-    interval: T,
-    current_step: T,
+    total_points: T,
+    current_point: T,
+    inverse: T,
 }
 
 impl<T: CoordFloat> HaversineIter<T> {
     pub fn new(start: Point<T>, max_step_size: T, end: Point<T>) -> Self
     where
-        T: FromPrimitive,
+        T: FromPrimitive + AsPrimitive<usize>,
     {
         let params = get_params(&start, &end);
         let HaversineParams { d, .. } = params;
         let total_distance = d * T::from(MEAN_EARTH_RADIUS).unwrap();
         let number_of_points = (total_distance / max_step_size).ceil();
         let step_size_m = total_distance / number_of_points;
-        let interval = T::one() / number_of_points;
-        let current_step = T::zero();
 
         Self {
-            start: Some(start),
-            end: Some(end),
             params,
             step_size_m,
-            interval,
-            current_step,
+            total_points: number_of_points + T::one(),
+            current_point: T::zero(),
+            inverse: T::one() / number_of_points,
         }
     }
 
@@ -45,20 +41,28 @@ impl<T: CoordFloat> HaversineIter<T> {
     }
 }
 
-impl<T: CoordFloat + Atan2> Iterator for HaversineIter<T> {
+impl<T: CoordFloat + Atan2 + AsPrimitive<usize>> Iterator for HaversineIter<T> {
     type Item = Point<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.start.is_some() {
-            self.current_step = self.current_step + self.interval;
-            self.start.take()
-        } else if self.current_step < T::one() {
-            let ret = Some(get_point(&self.params, self.current_step));
-            self.current_step = self.current_step + self.interval;
-            ret
+        if self.current_point < self.total_points {
+            let factor = self.current_point * self.inverse;
+            self.current_point = self.current_point + T::one();
+            Some(get_point(&self.params, factor))
         } else {
-            self.end.take()
+            None
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.total_points.as_() - self.current_point.as_();
+        (remaining, Some(remaining))
+    }
+}
+
+impl<T: CoordFloat + Atan2 + AsPrimitive<usize>> ExactSizeIterator for HaversineIter<T> {
+    fn len(&self) -> usize {
+        self.total_points.as_() - self.current_point.as_()
     }
 }
 
@@ -201,19 +205,20 @@ mod tests {
         let end = point!(x: 0.5, y: 0.5);
         let step_size_m = 17472.510284442324;
         let haversine = HaversineIter::new(start, step_size_m, end);
+        assert_eq!(haversine.len(), 10);
         assert_eq!(haversine.step_size_m(), step_size_m);
         let points = haversine.collect::<Vec<_>>();
         let expected = vec![
-            point!(x:-0.5,y:-0.5),
-            point!(x:-0.38888498879915234,y:-0.3888908388952553),
-            point!(x:-0.2777729026876084,y:-0.2777802152664852),
-            point!(x:-0.1666629058941368,y:-0.16666854700519793),
-            point!(x:-0.05555416267893612,y:-0.055556251975400386),
-            point!(x:0.05555416267893612,y:0.055556251975400386),
-            point!(x:0.1666629058941368,y:0.16666854700519793),
-            point!(x:0.2777729026876085,y:0.27778021526648533),
-            point!(x:0.38888498879915245,y:0.3888908388952555),
-            point!(x:0.5,y:0.5),
+            point!(x: -0.5, y: -0.5),
+            point!(x: -0.38888498879915234, y: -0.3888908388952553),
+            point!(x: -0.2777729026876084, y: -0.2777802152664852),
+            point!(x: -0.1666629058941368, y: -0.16666854700519793),
+            point!(x: -0.05555416267893612, y: -0.055556251975400386),
+            point!(x: 0.05555416267893612, y: 0.055556251975400386),
+            point!(x: 0.1666629058941367, y: 0.16666854700519784),
+            point!(x: 0.27777290268760824, y: 0.2777802152664851),
+            point!(x: 0.3888849887991523, y: 0.3888908388952552),
+            point!(x: 0.5, y: 0.5),
         ];
         assert_eq!(points, expected);
     }
