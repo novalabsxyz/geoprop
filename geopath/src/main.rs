@@ -5,74 +5,30 @@ use clap::Parser;
 use options::{Cli, Command as CliCmd};
 use serde::Serialize;
 use std::{io::Write, path::Path};
-use terrain::{Profile, TileMode, Tiles};
+use terrain::{
+    geo::{point, Point},
+    Profile, TileMode, Tiles,
+};
 use textplots::{Chart, Plot, Shape};
 
 fn main() -> Result<(), AnyError> {
     let cli = Cli::parse();
     let Cli {
-        srtm_dir,
+        tile_dir,
         rfprop,
-        max_step: step_size,
+        max_step,
         earth_curve,
         normalize,
         start,
         dest,
         cmd,
-    } = &cli;
+    } = cli;
 
     env_logger::init();
 
-    let tile_src = Tiles::new(srtm_dir.clone(), TileMode::MemMap)?;
-    let terrain_profile = if *rfprop {
-        None
-    } else {
-        Some(
-            Profile::builder()
-                .start(start.0)
-                .start_alt(start.1)
-                .max_step(*step_size)
-                .earth_curve(*earth_curve)
-                .normalize(*normalize)
-                .end(dest.0)
-                .end_alt(dest.1)
-                .build(&tile_src)?,
-        )
-    };
-
-    match cmd {
-        CliCmd::Csv => print_csv(terrain_profile, cli.clone()),
-        CliCmd::Plot => plot_ascii(terrain_profile.unwrap()),
-        CliCmd::Json => print_json(terrain_profile.unwrap()),
-    }
-}
-
-/// # Example with gnuplot
-///
-/// ```sh
-/// cargo run -- --srtm-dir=data/nasadem/3arcsecond/ --max-step=90 --earth-curve --normalize --start=0,0,100 --dest=0,1,0 csv | tr ',' ' ' > ~/.tmp/plot && gnuplot -p -e "plot for [col=4:5] '~/.tmp/plot' using 1:col with lines"
-/// ```
-fn print_csv(profile: Option<Profile<f64>>, cli: Cli) -> Result<(), AnyError> {
-    let mut stdout = std::io::stdout().lock();
-    writeln!(stdout, "Distance,Longitude,Latitude,Los,Elevation")?;
-    if let Some(profile) = profile {
-        for (((elevation, point), los), distance) in profile
-            .terrain_elev_m
-            .iter()
-            .zip(profile.great_circle.iter())
-            .zip(profile.los_elev_m.iter())
-            .zip(profile.distances_m.iter())
-        {
-            let longitude = point.x();
-            let latitude = point.y();
-            writeln!(
-                stdout,
-                "{distance},{longitude},{latitude},{los},{elevation}",
-            )?;
-        }
-    } else {
-        rfprop::init(Path::new("/Volumes/s3/3-arcsecond/bsdf/"), false)?;
-        let profile = rfprop::terrain_profile(
+    let terrain_profile: CommonProfile = if rfprop {
+        rfprop::init(Path::new(&tile_dir), false)?;
+        rfprop::terrain_profile(
             cli.start.0.y,
             cli.start.0.x,
             cli.start.1,
@@ -81,20 +37,56 @@ fn print_csv(profile: Option<Profile<f64>>, cli: Cli) -> Result<(), AnyError> {
             cli.dest.1,
             900e6,
             cli.normalize,
-        );
-        for ((distance, los), elevation) in profile
-            .distance
-            .iter()
-            .zip(profile.los.iter())
-            .zip(profile.terrain.iter())
-        {
-            writeln!(stdout, "{distance},0,0,{los},{elevation}",)?;
-        }
+        )
+        .into()
+    } else {
+        let tile_src = Tiles::new(tile_dir, TileMode::MemMap)?;
+        Profile::builder()
+            .start(start.0)
+            .start_alt(start.1)
+            .max_step(max_step)
+            .earth_curve(earth_curve)
+            .normalize(normalize)
+            .end(dest.0)
+            .end_alt(dest.1)
+            .build(&tile_src)?
+            .into()
+    };
+
+    match cmd {
+        CliCmd::Csv => print_csv(terrain_profile),
+        CliCmd::Plot => plot_ascii(terrain_profile),
+        CliCmd::Json => print_json(terrain_profile),
+        CliCmd::Tia => print_tia(terrain_profile),
+    }
+}
+
+/// # Example with gnuplot
+///
+/// ```sh
+/// cargo run -- --srtm-dir=data/nasadem/3arcsecond/ --max-step=90 --earth-curve --normalize --start=0,0,100 --dest=0,1,0 csv | tr ',' ' ' > ~/.tmp/plot && gnuplot -p -e "plot for [col=4:5] '~/.tmp/plot' using 1:col with lines"
+/// ```
+fn print_csv(profile: CommonProfile) -> Result<(), AnyError> {
+    let mut stdout = std::io::stdout().lock();
+    writeln!(stdout, "Distance,Longitude,Latitude,Los,Elevation")?;
+    for (((elevation, point), los), distance) in profile
+        .terrain_elev_m
+        .iter()
+        .zip(profile.great_circle.iter())
+        .zip(profile.los_elev_m.iter())
+        .zip(profile.distances_m.iter())
+    {
+        let longitude = point.x();
+        let latitude = point.y();
+        writeln!(
+            stdout,
+            "{distance},{longitude},{latitude},{los},{elevation}",
+        )?;
     }
     Ok(())
 }
 
-fn plot_ascii(profile: Profile<f64>) -> Result<(), AnyError> {
+fn plot_ascii(profile: CommonProfile) -> Result<(), AnyError> {
     let plot_data: Vec<(f32, f32)> = profile
         .terrain_elev_m
         .iter()
@@ -107,7 +99,7 @@ fn plot_ascii(profile: Profile<f64>) -> Result<(), AnyError> {
     Ok(())
 }
 
-fn print_json(profile: Profile<f64>) -> Result<(), AnyError> {
+fn print_json(profile: CommonProfile) -> Result<(), AnyError> {
     #[derive(Serialize)]
     struct JsonEntry {
         location: [f64; 2],
@@ -126,4 +118,73 @@ fn print_json(profile: Profile<f64>) -> Result<(), AnyError> {
     let json = serde_json::to_string(&reshaped)?;
     println!("{}", json);
     Ok(())
+}
+
+fn print_tia(profile: CommonProfile) -> Result<(), AnyError> {
+    let tia = terrain_intersection_area(
+        profile.distances_m.last().unwrap() / profile.distances_m.len() as f64,
+        &profile.los_elev_m,
+        &profile.terrain_elev_m,
+    );
+    println!("{tia} m²");
+    Ok(())
+}
+
+/// Calculate the positive area of intersection, in m², between the
+/// profile (terrain) and the line of sight.
+fn terrain_intersection_area(step_size_m: f64, los_vec: &[f64], profile: &[f64]) -> f64 {
+    los_vec
+        .iter()
+        .zip(profile.iter())
+        .map(|(los, prof)| (prof - los).max(0.0) * step_size_m)
+        .sum::<f64>()
+}
+
+/// A common represention of both native and rfprop profiles.
+struct CommonProfile {
+    great_circle: Vec<Point<f64>>,
+    distances_m: Vec<f64>,
+    los_elev_m: Vec<f64>,
+    terrain_elev_m: Vec<f64>,
+}
+
+impl From<Profile<f64>> for CommonProfile {
+    fn from(
+        Profile {
+            distances_m,
+            great_circle,
+            los_elev_m,
+            terrain_elev_m,
+            ..
+        }: Profile<f64>,
+    ) -> Self {
+        Self {
+            distances_m,
+            great_circle,
+            los_elev_m,
+            terrain_elev_m,
+        }
+    }
+}
+
+impl From<rfprop::TerrainProfile> for CommonProfile {
+    fn from(
+        rfprop::TerrainProfile {
+            mut distance,
+            los,
+            terrain,
+            ..
+        }: rfprop::TerrainProfile,
+    ) -> Self {
+        distance.iter_mut().for_each(|val| *val *= 1000.0);
+        let great_circle = std::iter::repeat(point!(x: 0.0, y:0.0))
+            .take(terrain.len())
+            .collect();
+        Self {
+            distances_m: distance,
+            great_circle,
+            los_elev_m: los,
+            terrain_elev_m: terrain,
+        }
+    }
 }
