@@ -6,9 +6,9 @@ use std::{path::PathBuf, str::FromStr};
 /// Generate point-to-point terrain profiles.
 #[derive(Parser, Debug, Clone)]
 pub struct Cli {
-    /// Directory containing SRTM hgt tiles.
+    /// Directory elevation tiles.
     #[arg(short, long)]
-    pub srtm_dir: PathBuf,
+    pub tile_dir: PathBuf,
 
     #[arg(long, default_value_t = false)]
     pub rfprop: bool,
@@ -38,7 +38,7 @@ pub struct Cli {
     pub cmd: Command,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct LatLonAlt(pub Coord<f64>, pub f64);
 
 impl FromStr for LatLonAlt {
