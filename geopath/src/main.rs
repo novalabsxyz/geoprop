@@ -44,6 +44,7 @@ fn main() -> Result<(), AnyError> {
         CliCmd::Csv => print_csv(terrain_profile, cli.clone()),
         CliCmd::Plot => plot_ascii(terrain_profile.unwrap()),
         CliCmd::Json => print_json(terrain_profile.unwrap()),
+        CliCmd::Tia => print_tia(terrain_profile.unwrap()),
     }
 }
 
@@ -126,4 +127,24 @@ fn print_json(profile: Profile<f64>) -> Result<(), AnyError> {
     let json = serde_json::to_string(&reshaped)?;
     println!("{}", json);
     Ok(())
+}
+
+fn print_tia(profile: Profile<f64>) -> Result<(), AnyError> {
+    let tia = terrain_intersection_area(
+        profile.distances_m[1],
+        &profile.los_elev_m,
+        &profile.terrain_elev_m,
+    );
+    println!("{tia} m²");
+    Ok(())
+}
+
+/// Calculate the positive area of intersection, in m², between the
+/// profile (terrain) and the line of sight.
+fn terrain_intersection_area(step_size_m: f64, los_vec: &[f64], profile: &[f64]) -> f64 {
+    los_vec
+        .iter()
+        .zip(profile.iter())
+        .map(|(los, prof)| (prof - los).max(0.0) * step_size_m)
+        .sum::<f64>()
 }

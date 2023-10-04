@@ -72,4 +72,7 @@ pub enum Command {
 
     /// Plot to terminal.
     Plot,
+
+    /// Calculate terrain itersection area in m²
+    Tia,
 }
