@@ -13,6 +13,9 @@ pub struct Cli {
     #[arg(long, default_value_t = false)]
     pub rfprop: bool,
 
+    #[arg(long = "f32", default_value_t = false)]
+    pub use_f32: bool,
+
     /// Maximum path incremental step size, in meters.
     #[arg(short, long, default_value_t = 90.0)]
     pub max_step: f64,
