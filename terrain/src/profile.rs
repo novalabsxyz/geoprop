@@ -1,5 +1,5 @@
 use crate::{
-    math::{elevation_angle, linspace, Atan2, HaversineIter},
+    math::{elevation_angle, linspace, HaversineIter},
     TerrainError, Tiles,
 };
 use geo::{
@@ -120,7 +120,7 @@ where
 
     pub fn build(&self, tiles: &Tiles) -> Result<Profile<C>, TerrainError>
     where
-        C: Atan2 + FloatConst + AsPrimitive<usize>,
+        C: FloatConst + AsPrimitive<usize>,
     {
         let start = self.start.ok_or(TerrainError::Builder("start"))?;
         let max_step_m = self.max_step_m.ok_or(TerrainError::Builder("max_step"))?;
