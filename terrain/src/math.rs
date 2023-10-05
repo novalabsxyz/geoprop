@@ -41,7 +41,7 @@ impl<T: CoordFloat> HaversineIter<T> {
     }
 }
 
-impl<T: CoordFloat + Atan2 + AsPrimitive<usize>> Iterator for HaversineIter<T> {
+impl<T: CoordFloat + AsPrimitive<usize>> Iterator for HaversineIter<T> {
     type Item = Point<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -60,7 +60,7 @@ impl<T: CoordFloat + Atan2 + AsPrimitive<usize>> Iterator for HaversineIter<T> {
     }
 }
 
-impl<T: CoordFloat + Atan2 + AsPrimitive<usize>> ExactSizeIterator for HaversineIter<T> {
+impl<T: CoordFloat + AsPrimitive<usize>> ExactSizeIterator for HaversineIter<T> {
     fn len(&self) -> usize {
         self.total_points.as_() - self.current_point.as_()
     }
@@ -80,7 +80,7 @@ struct HaversineParams<T> {
 #[allow(clippy::many_single_char_names)]
 fn get_point<T>(params: &HaversineParams<T>, f: T) -> Point<T>
 where
-    T: CoordFloat + Atan2,
+    T: CoordFloat,
 {
     let one = T::one();
 
@@ -101,8 +101,8 @@ where
     let y = a * p + b * q;
     let z = a * r + b * s;
 
-    let lat = Atan2::atan2(z, x.hypot(y));
-    let lon = Atan2::atan2(y, x);
+    let lat = z.atan2(x.hypot(y));
+    let lon = y.atan2(x);
 
     Point::new(lon.to_degrees(), lat.to_degrees())
 }
@@ -144,22 +144,6 @@ where
         q,
         r: lat1_sin,
         s: lat2_sin,
-    }
-}
-
-pub trait Atan2 {
-    fn atan2(lhs: Self, rhs: Self) -> Self;
-}
-
-impl Atan2 for f32 {
-    fn atan2(lhs: Self, rhs: Self) -> Self {
-        fast_math::atan2(lhs, rhs)
-    }
-}
-
-impl Atan2 for f64 {
-    fn atan2(lhs: Self, rhs: Self) -> Self {
-        lhs.atan2(rhs)
     }
 }
 

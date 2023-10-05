@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 dashmap    = { workspace = true }
-fast-math  = { workspace = true }
 geo        = { workspace = true }
 log        = { workspace = true }
 nasadem    = { path = "../nasadem" }
