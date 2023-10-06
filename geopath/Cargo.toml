@@ -12,13 +12,13 @@ version     = "0.1.0"
 
 [dependencies]
 anyhow     = "1"
-clap       = { workspace = true }
-env_logger = { workspace = true }
+clap       = { version = "4.4.2", features = ["derive"] }
+env_logger = "0.10"
 geo        = { workspace = true }
-itertools  = "*"
+itertools  = "0.10"
 num-traits = { workspace = true }
 rfprop     = { git = "https://github.com/JayKickliter/Signal-Server", branch = "master" }
-serde      = { workspace = true }
-serde_json = { workspace = true }
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
 terrain    = { path = "../terrain" }
-textplots  = { workspace = true }
+textplots  = "0.8.4"
