@@ -1,7 +1,14 @@
 [package]
-name    = "nasadem"
-version = "0.1.0"
-edition = "2021"
+categories  = ["science::geo"]
+description = "NASADEM SRTM elevation tile loading and lookup."
+edition     = "2021"
+homepage    = "https://github.com/jaykickliter/geoprof"
+keywords    = ["gis", "geo", "geography", "geospatial"]
+license     = "MIT OR Apache-2.0"
+name        = "nasadem"
+readme      = "README.md"
+repository  = "https://github.com/jaykickliter/geoprof"
+version     = "0.1.0"
 
 [dependencies]
 byteorder = { workspace = true }
