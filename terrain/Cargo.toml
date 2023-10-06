@@ -1,7 +1,14 @@
 [package]
-name = "terrain"
-version = "0.1.0"
-edition = "2021"
+categories  = ["science::geo"]
+description = "Geographic terrain profiling."
+edition     = "2021"
+homepage    = "https://github.com/jaykickliter/geoprof"
+keywords    = ["gis", "geo", "geography", "geospatial"]
+license     = "MIT OR Apache-2.0"
+name        = "terrain"
+readme      = "README.md"
+repository  = "https://github.com/jaykickliter/geoprof"
+version     = "0.1.0"
 
 [dependencies]
 dashmap    = { workspace = true }
