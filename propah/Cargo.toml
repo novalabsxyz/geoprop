@@ -11,4 +11,5 @@ repository  = "https://github.com/jaykickliter/geoprof"
 version     = "0.1.0"
 
 [dependencies]
-terrain = { path = "../terrain" }
+num-traits = { workspace = true }
+terrain    = { path = "../terrain" }
