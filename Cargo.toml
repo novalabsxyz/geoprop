@@ -2,6 +2,7 @@
 members = [
   "geopath",
   "nasadem",
+  "propah",
   "terrain",
 ]
 resolver = "2"

@@ -1,0 +1,14 @@
+[package]
+categories  = ["science"]
+description = "Radio frequency propogation modeling"
+edition     = "2021"
+homepage    = "https://github.com/jaykickliter/geoprof"
+keywords    = ["gis", "geo", "geography", "geospatial"]
+license     = "MIT OR Apache-2.0"
+name        = "propah"
+readme      = "README.md"
+repository  = "https://github.com/jaykickliter/geoprof"
+version     = "0.1.0"
+
+[dependencies]
+terrain = { path = "../terrain" }
