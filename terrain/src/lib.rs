@@ -9,7 +9,7 @@
 //! Suppose we want to determine the terrain obstruction a ray will
 //! encounter when following the path on the map from east to west:
 //!
-//! <iframe src="https://www.google.com/maps/d/u/0/embed?mid=1Q4TbMv-ZmAa4Uf6FizvkhQD3Ww2A498&ehbc=2E312F" width="800" height="480"></iframe>
+//! <iframe src="https://www.google.com/maps/d/u/0/embed?mid=1Q4TbMv-ZmAa4Uf6FizvkhQD3Ww2A498&ehbc=2E312F" width="100%" height="480"></iframe>
 //!
 //! **Example Code**
 //!
