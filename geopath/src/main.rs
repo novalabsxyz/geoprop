@@ -5,6 +5,7 @@ use clap::Parser;
 use itertools::Itertools;
 use num_traits::{AsPrimitive, Float, FromPrimitive};
 use options::{Cli, Command as CliCmd};
+use propah::fresnel::FresnelZone;
 use rfprop::TerrainProfile;
 use serde::Serialize;
 use std::{io::Write, path::Path};
@@ -25,6 +26,8 @@ fn main() -> Result<(), AnyError> {
         normalize,
         start,
         dest,
+        fresnel_zone,
+        frequency,
         cmd,
     } = cli;
 
@@ -58,7 +61,7 @@ fn main() -> Result<(), AnyError> {
             );
 
             let tile_src = Tiles::new(tile_dir, TileMode::MemMap)?;
-            Profile::<C>::builder()
+            let profile = Profile::<C>::builder()
                 .start(start_point)
                 .start_alt(start_alt)
                 .max_step(max_step)
@@ -66,8 +69,19 @@ fn main() -> Result<(), AnyError> {
                 .normalize(normalize)
                 .end(dest_point)
                 .end_alt(dest_alt)
-                .build(&tile_src)?
-                .into()
+                .build(&tile_src)?;
+
+            let fresnel_zone: Vec<C> =
+                if let (Some(zone), Some(frequency)) = (fresnel_zone, frequency) {
+                    FresnelZone::new(zone, frequency as C, *profile.distances_m.last().unwrap())
+                        .iter(profile.distances_m.len())
+                        .collect()
+                } else {
+                    std::iter::repeat(0 as C)
+                        .take(profile.distances_m.len())
+                        .collect()
+                };
+            (profile, fresnel_zone).into()
         };
 
         match cmd {
@@ -94,7 +108,7 @@ fn main() -> Result<(), AnyError> {
             .into()
         } else {
             let tile_src = Tiles::new(tile_dir, TileMode::MemMap)?;
-            Profile::<C>::builder()
+            let profile = Profile::<C>::builder()
                 .start(coord!(x: start.0.x, y: start.0.y))
                 .start_alt(start.1)
                 .max_step(max_step)
@@ -102,8 +116,18 @@ fn main() -> Result<(), AnyError> {
                 .normalize(normalize)
                 .end(coord!(x: dest.0.x, y: dest.0.y))
                 .end_alt(dest.1)
-                .build(&tile_src)?
-                .into()
+                .build(&tile_src)?;
+            let fresnel_zone: Vec<C> =
+                if let (Some(zone), Some(frequency)) = (fresnel_zone, frequency) {
+                    FresnelZone::new(zone, frequency as C, *profile.distances_m.last().unwrap())
+                        .iter(profile.distances_m.len())
+                        .collect()
+                } else {
+                    std::iter::repeat(f64::from(0))
+                        .take(profile.distances_m.len())
+                        .collect()
+                };
+            (profile, fresnel_zone).into()
         };
 
         match cmd {
@@ -122,19 +146,21 @@ fn main() -> Result<(), AnyError> {
 /// ```
 fn print_csv<T: CoordFloat + std::fmt::Display>(profile: CommonProfile<T>) -> Result<(), AnyError> {
     let mut stdout = std::io::stdout().lock();
-    writeln!(stdout, "Distance,Longitude,Latitude,Los,Elevation")?;
-    for (((elevation, point), los), distance) in profile
+    writeln!(stdout, "Distance,Longitude,Latitude,LOS,Elevation,Fresnel")?;
+    for ((((elevation, point), los), distance), fresnel) in profile
         .terrain_elev_m
         .iter()
         .zip(profile.great_circle.iter())
         .zip(profile.los_elev_m.iter())
         .zip(profile.distances_m.iter())
+        .zip(profile.fresnel_zone.iter())
     {
         let longitude = point.x();
         let latitude = point.y();
+        let fresnel = *los - *fresnel;
         writeln!(
             stdout,
-            "{distance},{longitude},{latitude},{los},{elevation}",
+            "{distance},{longitude},{latitude},{los},{elevation},{fresnel}",
         )?;
     }
     Ok(())
@@ -176,7 +202,7 @@ where
         })
         .collect();
     let json = serde_json::to_string(&reshaped)?;
-    println!("{}", json);
+    println!("{json}");
     Ok(())
 }
 
@@ -222,23 +248,28 @@ struct CommonProfile<T: CoordFloat> {
     distances_m: Vec<T>,
     los_elev_m: Vec<T>,
     terrain_elev_m: Vec<T>,
+    fresnel_zone: Vec<T>,
 }
 
-impl<T: CoordFloat> From<Profile<T>> for CommonProfile<T> {
+impl<T: CoordFloat> From<(Profile<T>, Vec<T>)> for CommonProfile<T> {
     fn from(
-        Profile {
-            distances_m,
-            great_circle,
-            los_elev_m,
-            terrain_elev_m,
-            ..
-        }: Profile<T>,
+        (
+            Profile {
+                distances_m,
+                great_circle,
+                los_elev_m,
+                terrain_elev_m,
+                ..
+            },
+            fresnel_zone,
+        ): (Profile<T>, Vec<T>),
     ) -> Self {
         Self {
-            distances_m,
             great_circle,
+            distances_m,
             los_elev_m,
             terrain_elev_m,
+            fresnel_zone,
         }
     }
 }
@@ -249,20 +280,23 @@ impl From<TerrainProfile> for CommonProfile<f32> {
             distance,
             los,
             terrain,
+            fresnel,
             ..
         }: TerrainProfile,
     ) -> Self {
         let distances_m = distance.iter().map(|val| *val as f32 * 1000.0).collect();
         let los_elev_m = los.iter().map(|val| *val as f32).collect();
         let terrain_elev_m = los.iter().map(|val| *val as f32).collect();
+        let fresnel_zone = fresnel.iter().map(|val| *val as f32).collect();
         let great_circle = std::iter::repeat(point!(x: 0.0, y:0.0))
             .take(terrain.len())
             .collect();
         Self {
-            distances_m,
             great_circle,
+            distances_m,
             los_elev_m,
             terrain_elev_m,
+            fresnel_zone,
         }
     }
 }
@@ -273,6 +307,7 @@ impl From<TerrainProfile> for CommonProfile<f64> {
             mut distance,
             los,
             terrain,
+            fresnel,
             ..
         }: TerrainProfile,
     ) -> Self {
@@ -285,6 +320,7 @@ impl From<TerrainProfile> for CommonProfile<f64> {
             great_circle,
             los_elev_m: los,
             terrain_elev_m: terrain,
+            fresnel_zone: fresnel,
         }
     }
 }

@@ -37,6 +37,14 @@ pub struct Cli {
     #[arg(long)]
     pub dest: LatLonAlt,
 
+    /// Add fresnel zone `n` to the plot.
+    #[arg(long = "zone", short = 'z')]
+    pub fresnel_zone: Option<u8>,
+
+    /// Frequency for fresnel zone calculation.
+    #[arg(long, short)]
+    pub frequency: Option<f64>,
+
     #[command(subcommand)]
     pub cmd: Command,
 }
