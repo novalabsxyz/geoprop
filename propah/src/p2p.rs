@@ -1,8 +1,8 @@
+use crate::geo::{Coord, CoordFloat, Point};
 use crate::{
     error::PropahError,
     fresnel::{freq_to_wavelen, fresnel},
 };
-use geo::{Coord, CoordFloat, Point};
 use num_traits::{AsPrimitive, Float, FloatConst, FromPrimitive};
 use terrain::{Profile, Tiles};
 

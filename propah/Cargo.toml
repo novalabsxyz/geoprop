@@ -13,7 +13,6 @@ version     = "0.1.0"
 [dependencies]
 
 geo        = { workspace = true }
-nasadem    = { path = "../nasadem" }
 num-traits = { workspace = true }
 terrain    = { path = "../terrain" }
 thiserror  = { workspace = true }
