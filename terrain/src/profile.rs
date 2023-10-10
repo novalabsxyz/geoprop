@@ -1,4 +1,5 @@
 use crate::{
+    constants::MEAN_EARTH_RADIUS,
     math::{elevation_angle, linspace, HaversineIter},
     TerrainError, Tiles,
 };
@@ -40,6 +41,7 @@ where
             end_alt_m: C::zero(),
             earth_curve: false,
             normalize: false,
+            earth_radius: C::from(MEAN_EARTH_RADIUS).unwrap(),
         }
     }
 }
@@ -67,6 +69,9 @@ pub struct ProfileBuilder<C: CoordFloat = f32> {
     /// the output (defaults to false; has no effect if `earth_curve`
     /// is `false`).
     normalize: bool,
+
+    /// Earth radius, defaults to [MEAN_EARTH_RADIUS].
+    earth_radius: C,
 }
 
 impl<C> ProfileBuilder<C>
@@ -122,6 +127,13 @@ where
     #[must_use]
     pub fn normalize(mut self, normalize: bool) -> Self {
         self.normalize = normalize;
+        self
+    }
+
+    /// Earth radius, defaults to [`MEAN_EARTH_RADIUS`].
+    #[must_use]
+    pub fn earth_radius(mut self, earth_radius_m: C) -> Self {
+        self.earth_radius = earth_radius_m;
         self
     }
 

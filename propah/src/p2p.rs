@@ -4,7 +4,7 @@ use crate::{
     fresnel::{freq_to_wavelen, fresnel},
 };
 use num_traits::{AsPrimitive, Float, FloatConst, FromPrimitive};
-use terrain::{Profile, Tiles};
+use terrain::{constants::MEAN_EARTH_RADIUS, Profile, Tiles};
 
 /// Point to point propogation estimate.
 #[derive(Debug, Clone)]
@@ -41,6 +41,7 @@ where
             end_alt_m: C::zero(),
             earth_curve: false,
             normalize: false,
+            earth_radius: C::from(MEAN_EARTH_RADIUS).unwrap(),
         }
     }
 }
@@ -71,6 +72,9 @@ pub struct Point2PointBuilder<C: CoordFloat = f32> {
     /// the output (defaults to false; has no effect if `earth_curve`
     /// is `false`).
     normalize: bool,
+
+    /// Earth radius, defaults to [MEAN_EARTH_RADIUS].
+    earth_radius: C,
 }
 
 impl<C> Point2PointBuilder<C>
@@ -133,6 +137,13 @@ where
     #[must_use]
     pub fn normalize(mut self, normalize: bool) -> Self {
         self.normalize = normalize;
+        self
+    }
+
+    /// Earth radius (meters, defaults to [`MEAN_EARTH_RADIUS`]).
+    #[must_use]
+    pub fn earth_radius(mut self, earth_radius_m: C) -> Self {
+        self.earth_radius = earth_radius_m;
         self
     }
 

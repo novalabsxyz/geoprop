@@ -75,7 +75,7 @@
 //! [`terrain_elev_m`]: struct.Profile.html#structfield.terrain_elev_m
 //! [`distances_m`]: struct.Profile.html#structfield.distances_m
 
-mod constants;
+pub mod constants;
 mod error;
 mod math;
 mod profile;
