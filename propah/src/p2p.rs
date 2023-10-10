@@ -10,21 +10,21 @@ use terrain::{Profile, Tiles};
 #[derive(Debug, Clone)]
 pub struct Point2Point<C: CoordFloat> {
     /// Incremental path distance for all following vectors.
-    pub distances_m: Vec<C>,
+    pub distances_m: Box<[C]>,
 
     /// Location of step along the great circle route from `start` to
     /// `end`.
-    pub great_circle: Vec<Point<C>>,
+    pub great_circle: Box<[Point<C>]>,
 
     /// Elevation at each step along the great circle route from
     /// `start` to `end`.
-    pub terrain_elev_m: Vec<C>,
+    pub terrain_elev_m: Box<[C]>,
 
     /// A straight line from `start` to `end`.
-    pub los_elev_m: Vec<C>,
+    pub los_elev_m: Box<[C]>,
 
     /// Fresnel zone thickness from `start` to `end`.
-    pub fresnel_zone_m: Vec<C>,
+    pub fresnel_zone_m: Box<[C]>,
 }
 
 impl<C> Point2Point<C>
@@ -166,11 +166,17 @@ where
         let total_distance_m = *distances_m.last().unwrap();
         let wavelen = freq_to_wavelen(freq_hz);
         let fresnel_zone_1 = 1.as_();
-        let fresnel_zone_m = distances_m
+        let fresnel_zone_m: Box<[C]> = distances_m
             .iter()
             .map(|&d1| fresnel(fresnel_zone_1, wavelen, d1, total_distance_m))
             .collect();
 
+        assert!(
+            distances_m.len() == great_circle.len()
+                && great_circle.len() == terrain_elev_m.len()
+                && terrain_elev_m.len() == los_elev_m.len()
+                && los_elev_m.len() == fresnel_zone_m.len()
+        );
         Ok(Point2Point {
             distances_m,
             great_circle,

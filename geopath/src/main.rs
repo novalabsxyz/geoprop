@@ -230,11 +230,11 @@ where
 
 /// A common represention of both native and rfprop profiles.
 struct CommonProfile<T: CoordFloat> {
-    great_circle: Vec<Point<T>>,
-    distances_m: Vec<T>,
-    los_elev_m: Vec<T>,
-    terrain_elev_m: Vec<T>,
-    fresnel_zone_m: Vec<T>,
+    great_circle: Box<[Point<T>]>,
+    distances_m: Box<[T]>,
+    los_elev_m: Box<[T]>,
+    terrain_elev_m: Box<[T]>,
+    fresnel_zone_m: Box<[T]>,
 }
 
 impl<T: CoordFloat> From<Point2Point<T>> for CommonProfile<T> {
@@ -299,11 +299,11 @@ impl From<TerrainProfile> for CommonProfile<f64> {
             .take(terrain.len())
             .collect();
         Self {
-            distances_m: distance,
+            distances_m: distance.into(),
             great_circle,
-            los_elev_m: los,
-            terrain_elev_m: terrain,
-            fresnel_zone_m: fresnel,
+            los_elev_m: los.into(),
+            terrain_elev_m: terrain.into(),
+            fresnel_zone_m: fresnel.into(),
         }
     }
 }
