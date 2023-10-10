@@ -1,8 +1,27 @@
+use crate::C;
 use num_traits::{AsPrimitive, Float};
 use std::{iter::Iterator, ops::Range};
 
-/// Speed of light in m/s
-const C: usize = 299_792_458;
+/// Returnes the EM wavelength for the provided `freq_hz`.
+pub fn freq_to_wavelen<T>(freq_hz: T) -> T
+where
+    T: Float + 'static,
+    usize: AsPrimitive<T>,
+{
+    C.as_() / freq_hz
+}
+
+/// Returns the nth fresnel `zone` thickness at distance `d_m` meters
+/// from the transmitter out of `total_d_m` meters.
+#[inline]
+pub fn fresnel<T>(zone: T, wavelen: T, d_m: T, total_d_m: T) -> T
+where
+    T: Float,
+{
+    let d1 = d_m;
+    let d2 = total_d_m - d1;
+    (zone * wavelen * d1 * d2 / total_d_m).sqrt()
+}
 
 /// Represents the lower nth fresnel zone of a radio link.
 #[derive(Debug)]
