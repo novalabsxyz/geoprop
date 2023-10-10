@@ -197,8 +197,8 @@ impl Tile {
 
     pub fn tombstone(sw_corner: Coord<i16>) -> Self {
         let sw_corner_center = Coord {
-            x: sw_corner.x as C,
-            y: sw_corner.y as C,
+            x: C::from(sw_corner.x),
+            y: C::from(sw_corner.y),
         };
 
         let (resolution, dimensions) = (3, (1201, 1201));
@@ -252,11 +252,13 @@ impl Tile {
     /// Returns the sample at the given geo coordinates.
     pub fn get(&self, coord: Coord<C>) -> Option<i16> {
         let (idx_x, idx_y) = self.coord_to_xy(coord);
+        #[allow(clippy::cast_possible_wrap)]
         if 0 <= idx_x
             && idx_x < self.dimensions.0 as isize
             && 0 <= idx_y
             && idx_y < self.dimensions.1 as isize
         {
+            #[allow(clippy::cast_sign_loss)]
             let idx_1d = self.xy_to_linear_index((idx_x as usize, idx_y as usize));
             Some(self.samples.get_unchecked(idx_1d))
         } else {
@@ -267,6 +269,7 @@ impl Tile {
     /// Returns the sample at the given geo coordinates.
     pub fn get_unchecked(&self, coord: Coord<C>) -> i16 {
         let (idx_x, idx_y) = self.coord_to_xy(coord);
+        #[allow(clippy::cast_sign_loss)]
         let idx_1d = self.xy_to_linear_index((idx_x as usize, idx_y as usize));
         self.samples.get_unchecked(idx_1d)
     }
@@ -291,7 +294,9 @@ impl Tile {
         //       Mt. Washington test.
         let sample_center_compensation = 1. / (c * 2.);
         let cc = sample_center_compensation;
+        #[allow(clippy::cast_possible_truncation)]
         let x = ((coord.x - self.sw_corner_center.x + cc) * c) as isize;
+        #[allow(clippy::cast_possible_truncation)]
         let y = ((coord.y - self.sw_corner_center.y + cc) * c) as isize;
         (x, y)
     }

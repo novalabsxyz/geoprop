@@ -66,14 +66,14 @@
 //! **Output Data**
 //!
 //! Here's an externally generated plot (plotting not included in this
-//! crate) of `profile`'s [los_elev_m] and [terrain_elev_m] over its
-//! [distances_m]:
+//! crate) of `profile`'s [`los_elev_m`] and [`terrain_elev_m`] over its
+//! [`distances_m`]:
 //!
 //! ![Lake Tahoe](https://github.com/JayKickliter/geoprof/assets/2551201/b8c94b4b-017c-4dd1-8a87-37c808ccea2b)
 //!
-//! [los_elev_m]: struct.Profile.html#structfield.los_elev_m
-//! [terrain_elev_m]: struct.Profile.html#structfield.terrain_elev_m
-//! [distances_m]: struct.Profile.html#structfield.distances_m
+//! [`los_elev_m`]: struct.Profile.html#structfield.los_elev_m
+//! [`terrain_elev_m`]: struct.Profile.html#structfield.terrain_elev_m
+//! [`distances_m`]: struct.Profile.html#structfield.distances_m
 
 mod constants;
 mod error;

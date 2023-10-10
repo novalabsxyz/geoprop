@@ -75,36 +75,42 @@ where
     f64: From<C>,
 {
     /// Start point of the path (required).
+    #[must_use]
     pub fn start(mut self, coord: Coord<C>) -> Self {
         self.start = Some(coord);
         self
     }
 
     /// Starting altitude above ground (meters, defaults to 0).
+    #[must_use]
     pub fn start_alt(mut self, meters: C) -> Self {
         self.start_alt_m = meters;
         self
     }
 
     /// Maximum distance between points (required).
+    #[must_use]
     pub fn max_step(mut self, meters: C) -> Self {
         self.max_step_m = Some(meters);
         self
     }
 
     /// End point of the path (required).
+    #[must_use]
     pub fn end(mut self, coord: Coord<C>) -> Self {
         self.end = Some(coord);
         self
     }
 
     /// Starting altitude above ground (meters, defaults to 0).
+    #[must_use]
     pub fn end_alt(mut self, meters: C) -> Self {
         self.end_alt_m = meters;
         self
     }
 
     /// Add earth curvature (defaults to false).
+    #[must_use]
     pub fn earth_curve(mut self, add_curve: bool) -> Self {
         self.earth_curve = add_curve;
         self
@@ -113,6 +119,7 @@ where
     /// Place virtual earth curve as the highest and center point of
     /// the output (defaults to false; has no effect if `earth_curve`
     /// is `false`).
+    #[must_use]
     pub fn normalize(mut self, normalize: bool) -> Self {
         self.normalize = normalize;
         self
@@ -284,20 +291,20 @@ mod tests {
     #[test]
     fn test_profile() {
         let start = Coord {
-            x: -71.30830716441369,
-            y: 44.28309806603165,
+            x: -71.308_307_164_413_69,
+            y: 44.283_098_066_031_65,
         };
         let end = Coord {
-            x: -71.2972073283768,
-            y: 44.25628098424278,
+            x: -71.297_207_328_376_8,
+            y: 44.256_280_984_242_78,
         };
 
         let tile_source = Tiles::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
 
-        let _90m = 90.0;
+        let d90m = 90.0;
         let profile = Profile::builder()
             .start(start)
-            .max_step(_90m)
+            .max_step(d90m)
             .end(end)
             .build(&tile_source)
             .unwrap();

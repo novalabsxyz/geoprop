@@ -5,6 +5,7 @@ use std::{path::PathBuf, str::FromStr};
 
 /// Generate point-to-point terrain profiles.
 #[derive(Parser, Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Cli {
     /// Directory elevation tiles.
     #[arg(short, long)]

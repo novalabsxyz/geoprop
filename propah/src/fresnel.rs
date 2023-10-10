@@ -33,7 +33,7 @@ pub struct FresnelZone<T> {
 }
 
 impl<T> FresnelZone<T> {
-    /// Returns a new FesnelZone object.
+    /// Returns a new `FesnelZone` object.
     pub fn new(zone: u8, f_hz: T, distance_m: T) -> Self
     where
         T: Float + 'static,
@@ -47,7 +47,8 @@ impl<T> FresnelZone<T> {
         }
     }
 
-    /// Returns a new FresnelZoneIter of length `len`.
+    /// Returns a new `FresnelZoneIter` of length `len`.
+    #[allow(clippy::iter_not_returning_iterator)]
     pub fn iter(&self, len: usize) -> FresnelZoneIter<T>
     where
         T: Copy + 'static,
@@ -103,7 +104,7 @@ mod tests {
     fn test_1st_fresnel_zone() {
         let mut iter = FresnelZone::new(1, 900e6, 1e3).iter(3);
         assert_eq!(iter.next(), Some(0.0));
-        assert_eq!(iter.next(), Some(9.125551094469735));
+        assert_eq!(iter.next(), Some(9.125_551_094_469_735));
         assert_eq!(iter.next(), Some(0.0));
     }
 
@@ -111,7 +112,7 @@ mod tests {
     fn test_2nd_fresnel_zone() {
         let mut iter = FresnelZone::new(2, 900e6, 1e3).iter(3);
         assert_eq!(iter.next(), Some(0.0));
-        assert_eq!(iter.next(), Some(12.90547812192774));
+        assert_eq!(iter.next(), Some(12.905_478_121_927_74));
         assert_eq!(iter.next(), Some(0.0));
     }
 
@@ -119,7 +120,7 @@ mod tests {
     fn test_3rd_fresnel_zone() {
         let mut iter = FresnelZone::new(3, 900e6, 1e3).iter(3);
         assert_eq!(iter.next(), Some(0.0));
-        assert_eq!(iter.next(), Some(15.805918142687355));
+        assert_eq!(iter.next(), Some(15.805_918_142_687_355));
         assert_eq!(iter.next(), Some(0.0));
     }
 }

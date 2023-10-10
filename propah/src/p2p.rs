@@ -79,42 +79,49 @@ where
     f64: From<C>,
 {
     /// Frequency of signal (Hz, required).
+    #[must_use]
     pub fn freq(mut self, freq_hz: C) -> Self {
         self.freq_hz = Some(freq_hz);
         self
     }
 
     /// Start point of the path (required).
+    #[must_use]
     pub fn start(mut self, coord: Coord<C>) -> Self {
         self.start = Some(coord);
         self
     }
 
     /// Starting altitude above ground (meters, defaults to 0).
+    #[must_use]
     pub fn start_alt(mut self, meters: C) -> Self {
         self.start_alt_m = meters;
         self
     }
 
     /// Maximum distance between points (required).
+    #[must_use]
     pub fn max_step(mut self, meters: C) -> Self {
         self.max_step_m = Some(meters);
         self
     }
 
     /// End point of the path (required).
+    #[must_use]
     pub fn end(mut self, coord: Coord<C>) -> Self {
         self.end = Some(coord);
         self
     }
 
     /// Starting altitude above ground (meters, defaults to 0).
+    #[must_use]
     pub fn end_alt(mut self, meters: C) -> Self {
         self.end_alt_m = meters;
         self
     }
 
     /// Add earth curvature (defaults to false).
+    #[must_use]
     pub fn earth_curve(mut self, add_curve: bool) -> Self {
         self.earth_curve = add_curve;
         self
@@ -123,6 +130,7 @@ where
     /// Place virtual earth curve as the highest and center point of
     /// the output (defaults to false; has no effect if `earth_curve`
     /// is `false`).
+    #[must_use]
     pub fn normalize(mut self, normalize: bool) -> Self {
         self.normalize = normalize;
         self

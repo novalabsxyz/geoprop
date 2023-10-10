@@ -1,3 +1,5 @@
+#![allow(clippy::cast_possible_truncation)]
+
 mod options;
 
 use anyhow::Error as AnyError;
@@ -76,11 +78,11 @@ fn main() -> Result<(), AnyError> {
         };
 
         match cmd {
-            CliCmd::Csv => print_csv(terrain_profile),
-            CliCmd::Plot => plot_ascii(terrain_profile),
-            CliCmd::Json => print_json(terrain_profile),
-            CliCmd::Tia => print_tia(terrain_profile),
-        }
+            CliCmd::Csv => print_csv(&terrain_profile)?,
+            CliCmd::Plot => plot_ascii(&terrain_profile),
+            CliCmd::Json => print_json(&terrain_profile)?,
+            CliCmd::Tia => print_tia(&terrain_profile),
+        };
     } else {
         type C = f64;
 
@@ -113,12 +115,13 @@ fn main() -> Result<(), AnyError> {
         };
 
         match cmd {
-            CliCmd::Csv => print_csv(terrain_profile),
-            CliCmd::Plot => plot_ascii(terrain_profile),
-            CliCmd::Json => print_json(terrain_profile),
-            CliCmd::Tia => print_tia(terrain_profile),
-        }
+            CliCmd::Csv => print_csv(&terrain_profile)?,
+            CliCmd::Plot => plot_ascii(&terrain_profile),
+            CliCmd::Json => print_json(&terrain_profile)?,
+            CliCmd::Tia => print_tia(&terrain_profile),
+        };
     }
+    Ok(())
 }
 
 /// # Example with gnuplot
@@ -126,7 +129,9 @@ fn main() -> Result<(), AnyError> {
 /// ```sh
 /// cargo run -- --srtm-dir=data/nasadem/3arcsecond/ --max-step=90 --earth-curve --normalize --start=0,0,100 --dest=0,1,0 csv | tr ',' ' ' > ~/.tmp/plot && gnuplot -p -e "plot for [col=4:5] '~/.tmp/plot' using 1:col with lines"
 /// ```
-fn print_csv<T: CoordFloat + std::fmt::Display>(profile: CommonProfile<T>) -> Result<(), AnyError> {
+fn print_csv<T: CoordFloat + std::fmt::Display>(
+    profile: &CommonProfile<T>,
+) -> Result<(), AnyError> {
     let mut stdout = std::io::stdout().lock();
     writeln!(stdout, "Distance,Longitude,Latitude,LOS,Elevation,Fresnel")?;
     for ((((elevation, point), los), distance), fresnel) in profile
@@ -148,7 +153,7 @@ fn print_csv<T: CoordFloat + std::fmt::Display>(profile: CommonProfile<T>) -> Re
     Ok(())
 }
 
-fn plot_ascii<T>(profile: CommonProfile<T>) -> Result<(), AnyError>
+fn plot_ascii<T>(profile: &CommonProfile<T>)
 where
     T: CoordFloat + AsPrimitive<f32>,
 {
@@ -158,13 +163,13 @@ where
         .enumerate()
         .map(|(idx, elev)| (f32::from(idx as u16), elev.as_()))
         .collect();
+    #[allow(clippy::cast_precision_loss)]
     Chart::new(300, 150, 0.0, plot_data.len() as f32)
         .lineplot(&Shape::Lines(&plot_data))
         .display();
-    Ok(())
 }
 
-fn print_json<T>(profile: CommonProfile<T>) -> Result<(), AnyError>
+fn print_json<T>(profile: &CommonProfile<T>) -> Result<(), AnyError>
 where
     T: CoordFloat + Serialize,
 {
@@ -188,7 +193,7 @@ where
     Ok(())
 }
 
-fn print_tia<T>(profile: CommonProfile<T>) -> Result<(), AnyError>
+fn print_tia<T>(profile: &CommonProfile<T>)
 where
     T: CoordFloat + FromPrimitive + std::fmt::Display + std::iter::Sum,
 {
@@ -198,7 +203,6 @@ where
         &profile.terrain_elev_m,
     );
     println!("{tia} m²");
-    Ok(())
 }
 
 /// Calculate the positive area of intersection, in m², between the
