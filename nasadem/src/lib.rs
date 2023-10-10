@@ -26,6 +26,13 @@ use std::{
     sync::atomic::{AtomicI16, Ordering},
 };
 
+/// Base floating point type used for all coordinates and calculations.
+///
+/// Note: this _could_ be a generic parameter, but doing so makes the
+/// library more complicated. While f32 vs f64 does make a measurable
+/// differnece when walking paths across tiles (see `Profile` type in
+/// the `terrain` crate), benchmarking shows that switching NASADEMs
+/// to `f32` has no effect.
 pub type C = f64;
 
 const ARCSEC_PER_DEG: C = 3600.0;
