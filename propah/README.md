@@ -1,5 +1,8 @@
 # Radio Frequency Propogation Modeling
 
+This crate builds on top of `terrain`, using the terrain data to model
+RF propagation.
+
 # License
 
 Licensed under either of
