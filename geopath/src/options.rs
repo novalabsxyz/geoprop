@@ -5,6 +5,7 @@ use std::{path::PathBuf, str::FromStr};
 
 /// Generate point-to-point terrain profiles.
 #[derive(Parser, Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Cli {
     /// Directory elevation tiles.
     #[arg(short, long)]
@@ -36,6 +37,10 @@ pub struct Cli {
     /// Destination "lat,lon,alt", where 'alt' is meters above ground.
     #[arg(long)]
     pub dest: LatLonAlt,
+
+    /// Frequency for fresnel zone calculation.
+    #[arg(long, short)]
+    pub frequency: Option<f64>,
 
     #[command(subcommand)]
     pub cmd: Command,

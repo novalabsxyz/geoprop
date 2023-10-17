@@ -24,27 +24,27 @@ fn memmap_terrain_profile_f32(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("Profile<f32>");
 
-    let _2_4km = (
-        coord!(x:-117.3519964316712f32, y:52.30693919915002f32),
-        coord!(x:-117.3165476765753f32, y:52.30866462880422f32),
+    let p_2_4km = (
+        coord!(x:-117.351_996_431_671_2_f32, y:52.306_939_199_150_02_f32),
+        coord!(x:-117.316_547_676_575_3_f32, y:52.308_664_628_804_22_f32),
     );
 
-    let _67km = (
-        coord!(x:22.02060050752248f32, y:17.32531643138395f32),
-        coord!(x:22.6498898241764f32, y:17.31391991428638f32),
+    let p_67km = (
+        coord!(x:22.020_600_507_522_48_f32, y:17.325_316_431_383_95_f32),
+        coord!(x:22.649_889_824_176_4_f32, y:17.313_919_914_286_38_f32),
     );
 
-    let _103km = (
-        coord!(x:95.15915866746103f32, y:38.89938117857166f32),
-        coord!(x:94.615374082193f32, y:39.72746075951511f32),
+    let p_103km = (
+        coord!(x:95.159_158_667_461_03_f32, y:38.899_381_178_571_66_f32),
+        coord!(x:94.615_374_082_193_f32, y:39.727_460_759_515_11_f32),
     );
 
     // Distance between each elevation sample
-    let _90m = 90.0;
+    let d_90m = 90.0;
 
     group.bench_with_input(
         "2.4_km",
-        &(&tile_source, _90m, _2_4km),
+        &(&tile_source, d_90m, p_2_4km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
                 Profile::builder()
@@ -55,13 +55,13 @@ fn memmap_terrain_profile_f32(c: &mut Criterion) {
                     .normalize(true)
                     .build(t)
                     .unwrap()
-            })
+            });
         },
     );
 
     group.bench_with_input(
         "67_km",
-        &(&tile_source, _90m, _67km),
+        &(&tile_source, d_90m, p_67km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
                 Profile::builder()
@@ -72,13 +72,13 @@ fn memmap_terrain_profile_f32(c: &mut Criterion) {
                     .normalize(true)
                     .build(t)
                     .unwrap()
-            })
+            });
         },
     );
 
     group.bench_with_input(
         "103_km",
-        &(&tile_source, _90m, _103km),
+        &(&tile_source, d_90m, p_103km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
                 Profile::builder()
@@ -89,7 +89,7 @@ fn memmap_terrain_profile_f32(c: &mut Criterion) {
                     .normalize(true)
                     .build(t)
                     .unwrap()
-            })
+            });
         },
     );
 }
@@ -99,27 +99,27 @@ fn memmap_terrain_profile_f64(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("Profile<f64>");
 
-    let _2_4km = (
-        coord!(x:-117.3519964316712f64, y:52.30693919915002f64),
-        coord!(x:-117.3165476765753f64, y:52.30866462880422f64),
+    let p_2_4km = (
+        coord!(x:-117.351_996_431_671_2_f64, y:52.306_939_199_150_02_f64),
+        coord!(x:-117.316_547_676_575_3_f64, y:52.308_664_628_804_22_f64),
     );
 
-    let _67km = (
-        coord!(x:22.02060050752248f64, y:17.32531643138395f64),
-        coord!(x:22.6498898241764f64, y:17.31391991428638f64),
+    let p_67km = (
+        coord!(x:22.020_600_507_522_48_f64, y:17.325_316_431_383_95_f64),
+        coord!(x:22.649_889_824_176_4_f64, y:17.313_919_914_286_38_f64),
     );
 
-    let _103km = (
-        coord!(x:95.15915866746103f64, y:38.89938117857166f64),
-        coord!(x:94.615374082193f64, y:39.72746075951511f64),
+    let p_103km = (
+        coord!(x:95.159_158_667_461_03_f64, y:38.899_381_178_571_66_f64),
+        coord!(x:94.615_374_082_193_f64, y:39.727_460_759_515_11_f64),
     );
 
     // Distance between each elevation sample
-    let _90m = 90.0;
+    let d_90m = 90.0;
 
     group.bench_with_input(
         "2.4_km",
-        &(&tile_source, _90m, _2_4km),
+        &(&tile_source, d_90m, p_2_4km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
                 Profile::builder()
@@ -130,13 +130,13 @@ fn memmap_terrain_profile_f64(c: &mut Criterion) {
                     .normalize(true)
                     .build(t)
                     .unwrap()
-            })
+            });
         },
     );
 
     group.bench_with_input(
         "67_km",
-        &(&tile_source, _90m, _67km),
+        &(&tile_source, d_90m, p_67km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
                 Profile::builder()
@@ -147,13 +147,13 @@ fn memmap_terrain_profile_f64(c: &mut Criterion) {
                     .normalize(true)
                     .build(t)
                     .unwrap()
-            })
+            });
         },
     );
 
     group.bench_with_input(
         "103_km",
-        &(&tile_source, _90m, _103km),
+        &(&tile_source, d_90m, p_103km),
         |b, (t, d, (s, e))| {
             b.iter(|| {
                 Profile::builder()
@@ -164,7 +164,7 @@ fn memmap_terrain_profile_f64(c: &mut Criterion) {
                     .normalize(true)
                     .build(t)
                     .unwrap()
-            })
+            });
         },
     );
 }

@@ -1,3 +1,5 @@
+#![allow(clippy::cast_possible_truncation)]
+
 mod options;
 
 use anyhow::Error as AnyError;
@@ -5,12 +7,13 @@ use clap::Parser;
 use itertools::Itertools;
 use num_traits::{AsPrimitive, Float, FromPrimitive};
 use options::{Cli, Command as CliCmd};
+use propah::Point2Point;
 use rfprop::TerrainProfile;
 use serde::Serialize;
 use std::{io::Write, path::Path};
 use terrain::{
     geo::{coord, point, CoordFloat, Point},
-    Profile, TileMode, Tiles,
+    TileMode, Tiles,
 };
 use textplots::{Chart, Plot, Shape};
 
@@ -25,10 +28,13 @@ fn main() -> Result<(), AnyError> {
         normalize,
         start,
         dest,
+        frequency,
         cmd,
     } = cli;
 
     env_logger::init();
+
+    let frequency = frequency.unwrap_or(900e6);
 
     if use_f32 {
         type C = f32;
@@ -58,24 +64,25 @@ fn main() -> Result<(), AnyError> {
             );
 
             let tile_src = Tiles::new(tile_dir, TileMode::MemMap)?;
-            Profile::<C>::builder()
+            Point2Point::<C>::builder()
+                .freq(frequency as C)
                 .start(start_point)
                 .start_alt(start_alt)
                 .max_step(max_step)
-                .earth_curve(earth_curve)
-                .normalize(normalize)
                 .end(dest_point)
                 .end_alt(dest_alt)
+                .earth_curve(earth_curve)
+                .normalize(normalize)
                 .build(&tile_src)?
                 .into()
         };
 
         match cmd {
-            CliCmd::Csv => print_csv(terrain_profile),
-            CliCmd::Plot => plot_ascii(terrain_profile),
-            CliCmd::Json => print_json(terrain_profile),
-            CliCmd::Tia => print_tia(terrain_profile),
-        }
+            CliCmd::Csv => print_csv(&terrain_profile)?,
+            CliCmd::Plot => plot_ascii(&terrain_profile),
+            CliCmd::Json => print_json(&terrain_profile)?,
+            CliCmd::Tia => print_tia(&terrain_profile),
+        };
     } else {
         type C = f64;
 
@@ -88,31 +95,33 @@ fn main() -> Result<(), AnyError> {
                 cli.dest.0.y,
                 cli.dest.0.x,
                 cli.dest.1,
-                900e6,
+                frequency,
                 cli.normalize,
             )
             .into()
         } else {
             let tile_src = Tiles::new(tile_dir, TileMode::MemMap)?;
-            Profile::<C>::builder()
+            Point2Point::<C>::builder()
+                .freq(frequency)
                 .start(coord!(x: start.0.x, y: start.0.y))
                 .start_alt(start.1)
                 .max_step(max_step)
-                .earth_curve(earth_curve)
-                .normalize(normalize)
                 .end(coord!(x: dest.0.x, y: dest.0.y))
                 .end_alt(dest.1)
+                .earth_curve(earth_curve)
+                .normalize(normalize)
                 .build(&tile_src)?
                 .into()
         };
 
         match cmd {
-            CliCmd::Csv => print_csv(terrain_profile),
-            CliCmd::Plot => plot_ascii(terrain_profile),
-            CliCmd::Json => print_json(terrain_profile),
-            CliCmd::Tia => print_tia(terrain_profile),
-        }
+            CliCmd::Csv => print_csv(&terrain_profile)?,
+            CliCmd::Plot => plot_ascii(&terrain_profile),
+            CliCmd::Json => print_json(&terrain_profile)?,
+            CliCmd::Tia => print_tia(&terrain_profile),
+        };
     }
+    Ok(())
 }
 
 /// # Example with gnuplot
@@ -120,27 +129,31 @@ fn main() -> Result<(), AnyError> {
 /// ```sh
 /// cargo run -- --srtm-dir=data/nasadem/3arcsecond/ --max-step=90 --earth-curve --normalize --start=0,0,100 --dest=0,1,0 csv | tr ',' ' ' > ~/.tmp/plot && gnuplot -p -e "plot for [col=4:5] '~/.tmp/plot' using 1:col with lines"
 /// ```
-fn print_csv<T: CoordFloat + std::fmt::Display>(profile: CommonProfile<T>) -> Result<(), AnyError> {
+fn print_csv<T: CoordFloat + std::fmt::Display>(
+    profile: &CommonProfile<T>,
+) -> Result<(), AnyError> {
     let mut stdout = std::io::stdout().lock();
-    writeln!(stdout, "Distance,Longitude,Latitude,Los,Elevation")?;
-    for (((elevation, point), los), distance) in profile
+    writeln!(stdout, "Distance,Longitude,Latitude,LOS,Elevation,Fresnel")?;
+    for ((((elevation, point), los), distance), fresnel) in profile
         .terrain_elev_m
         .iter()
         .zip(profile.great_circle.iter())
         .zip(profile.los_elev_m.iter())
         .zip(profile.distances_m.iter())
+        .zip(profile.fresnel_zone_m.iter())
     {
         let longitude = point.x();
         let latitude = point.y();
+        let fresnel = *los - *fresnel;
         writeln!(
             stdout,
-            "{distance},{longitude},{latitude},{los},{elevation}",
+            "{distance},{longitude},{latitude},{los},{elevation},{fresnel}",
         )?;
     }
     Ok(())
 }
 
-fn plot_ascii<T>(profile: CommonProfile<T>) -> Result<(), AnyError>
+fn plot_ascii<T>(profile: &CommonProfile<T>)
 where
     T: CoordFloat + AsPrimitive<f32>,
 {
@@ -150,13 +163,13 @@ where
         .enumerate()
         .map(|(idx, elev)| (f32::from(idx as u16), elev.as_()))
         .collect();
+    #[allow(clippy::cast_precision_loss)]
     Chart::new(300, 150, 0.0, plot_data.len() as f32)
         .lineplot(&Shape::Lines(&plot_data))
         .display();
-    Ok(())
 }
 
-fn print_json<T>(profile: CommonProfile<T>) -> Result<(), AnyError>
+fn print_json<T>(profile: &CommonProfile<T>) -> Result<(), AnyError>
 where
     T: CoordFloat + Serialize,
 {
@@ -176,11 +189,11 @@ where
         })
         .collect();
     let json = serde_json::to_string(&reshaped)?;
-    println!("{}", json);
+    println!("{json}");
     Ok(())
 }
 
-fn print_tia<T>(profile: CommonProfile<T>) -> Result<(), AnyError>
+fn print_tia<T>(profile: &CommonProfile<T>)
 where
     T: CoordFloat + FromPrimitive + std::fmt::Display + std::iter::Sum,
 {
@@ -190,7 +203,6 @@ where
         &profile.terrain_elev_m,
     );
     println!("{tia} m²");
-    Ok(())
 }
 
 /// Calculate the positive area of intersection, in m², between the
@@ -218,27 +230,29 @@ where
 
 /// A common represention of both native and rfprop profiles.
 struct CommonProfile<T: CoordFloat> {
-    great_circle: Vec<Point<T>>,
-    distances_m: Vec<T>,
-    los_elev_m: Vec<T>,
-    terrain_elev_m: Vec<T>,
+    great_circle: Box<[Point<T>]>,
+    distances_m: Box<[T]>,
+    los_elev_m: Box<[T]>,
+    terrain_elev_m: Box<[T]>,
+    fresnel_zone_m: Box<[T]>,
 }
 
-impl<T: CoordFloat> From<Profile<T>> for CommonProfile<T> {
+impl<T: CoordFloat> From<Point2Point<T>> for CommonProfile<T> {
     fn from(
-        Profile {
+        Point2Point {
             distances_m,
             great_circle,
             los_elev_m,
             terrain_elev_m,
-            ..
-        }: Profile<T>,
+            fresnel_zone_m,
+        }: Point2Point<T>,
     ) -> Self {
         Self {
-            distances_m,
             great_circle,
+            distances_m,
             los_elev_m,
             terrain_elev_m,
+            fresnel_zone_m,
         }
     }
 }
@@ -249,20 +263,23 @@ impl From<TerrainProfile> for CommonProfile<f32> {
             distance,
             los,
             terrain,
+            fresnel,
             ..
         }: TerrainProfile,
     ) -> Self {
         let distances_m = distance.iter().map(|val| *val as f32 * 1000.0).collect();
         let los_elev_m = los.iter().map(|val| *val as f32).collect();
         let terrain_elev_m = los.iter().map(|val| *val as f32).collect();
+        let fresnel_zone_m = fresnel.iter().map(|val| *val as f32).collect();
         let great_circle = std::iter::repeat(point!(x: 0.0, y:0.0))
             .take(terrain.len())
             .collect();
         Self {
-            distances_m,
             great_circle,
+            distances_m,
             los_elev_m,
             terrain_elev_m,
+            fresnel_zone_m,
         }
     }
 }
@@ -273,6 +290,7 @@ impl From<TerrainProfile> for CommonProfile<f64> {
             mut distance,
             los,
             terrain,
+            fresnel,
             ..
         }: TerrainProfile,
     ) -> Self {
@@ -281,10 +299,11 @@ impl From<TerrainProfile> for CommonProfile<f64> {
             .take(terrain.len())
             .collect();
         Self {
-            distances_m: distance,
+            distances_m: distance.into(),
             great_circle,
-            los_elev_m: los,
-            terrain_elev_m: terrain,
+            los_elev_m: los.into(),
+            terrain_elev_m: terrain.into(),
+            fresnel_zone_m: fresnel.into(),
         }
     }
 }

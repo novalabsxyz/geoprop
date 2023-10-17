@@ -9,7 +9,7 @@
 //! Suppose we want to determine the terrain obstruction a ray will
 //! encounter when following the path on the map from east to west:
 //!
-//! <iframe src="https://www.google.com/maps/d/u/0/embed?mid=1Q4TbMv-ZmAa4Uf6FizvkhQD3Ww2A498&ehbc=2E312F" width="800" height="480"></iframe>
+//! <iframe src="https://www.google.com/maps/d/u/0/embed?mid=1Q4TbMv-ZmAa4Uf6FizvkhQD3Ww2A498&ehbc=2E312F" width="100%" height="480"></iframe>
 //!
 //! **Example Code**
 //!
@@ -66,16 +66,16 @@
 //! **Output Data**
 //!
 //! Here's an externally generated plot (plotting not included in this
-//! crate) of `profile`'s [los_elev_m] and [terrain_elev_m] over its
-//! [distances_m]:
+//! crate) of `profile`'s [`los_elev_m`] and [`terrain_elev_m`] over its
+//! [`distances_m`]:
 //!
 //! ![Lake Tahoe](https://github.com/JayKickliter/geoprof/assets/2551201/b8c94b4b-017c-4dd1-8a87-37c808ccea2b)
 //!
-//! [los_elev_m]: struct.Profile.html#structfield.los_elev_m
-//! [terrain_elev_m]: struct.Profile.html#structfield.terrain_elev_m
-//! [distances_m]: struct.Profile.html#structfield.distances_m
+//! [`los_elev_m`]: struct.Profile.html#structfield.los_elev_m
+//! [`terrain_elev_m`]: struct.Profile.html#structfield.terrain_elev_m
+//! [`distances_m`]: struct.Profile.html#structfield.distances_m
 
-mod constants;
+pub mod constants;
 mod error;
 mod math;
 mod profile;

@@ -187,21 +187,21 @@ mod tests {
     fn test_haversine_iter() {
         let start = point!(x: -0.5, y: -0.5);
         let end = point!(x: 0.5, y: 0.5);
-        let step_size_m = 17472.510284442324;
+        let step_size_m = 17_472.510_284_442_324;
         let haversine = HaversineIter::new(start, step_size_m, end);
         assert_eq!(haversine.len(), 10);
-        assert_eq!(haversine.step_size_m(), step_size_m);
+        assert_relative_eq!(haversine.step_size_m(), step_size_m);
         let points = haversine.collect::<Vec<_>>();
         let expected = vec![
             point!(x: -0.5, y: -0.5),
-            point!(x: -0.38888498879915234, y: -0.3888908388952553),
-            point!(x: -0.2777729026876084, y: -0.2777802152664852),
-            point!(x: -0.1666629058941368, y: -0.16666854700519793),
-            point!(x: -0.05555416267893612, y: -0.055556251975400386),
-            point!(x: 0.05555416267893612, y: 0.055556251975400386),
-            point!(x: 0.1666629058941367, y: 0.16666854700519784),
-            point!(x: 0.27777290268760824, y: 0.2777802152664851),
-            point!(x: 0.3888849887991523, y: 0.3888908388952552),
+            point!(x: -0.388_884_988_799_152_34, y: -0.388_890_838_895_255_3),
+            point!(x: -0.277_772_902_687_608_4, y: -0.277_780_215_266_485_2),
+            point!(x: -0.166_662_905_894_136_8, y: -0.166_668_547_005_197_93),
+            point!(x: -0.055_554_162_678_936_12, y: -0.055_556_251_975_400_386),
+            point!(x: 0.055_554_162_678_936_12, y: 0.055_556_251_975_400_386),
+            point!(x: 0.166_662_905_894_136_7, y: 0.166_668_547_005_197_84),
+            point!(x: 0.277_772_902_687_608_24, y: 0.277_780_215_266_485_1),
+            point!(x: 0.388_884_988_799_152_3, y: 0.388_890_838_895_255_2),
             point!(x: 0.5, y: 0.5),
         ];
         assert_eq!(points, expected);
@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn test_elevation_angle() {
         assert_relative_eq!(
-            0.10016734235964142,
+            0.100_167_342_359_641_42,
             elevation_angle(1.0, 1.0, 1.1),
             epsilon = f64::EPSILON
         );

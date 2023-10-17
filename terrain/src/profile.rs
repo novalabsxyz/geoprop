@@ -1,4 +1,5 @@
 use crate::{
+    constants::MEAN_EARTH_RADIUS,
     math::{elevation_angle, linspace, HaversineIter},
     TerrainError, Tiles,
 };
@@ -13,18 +14,18 @@ use num_traits::{AsPrimitive, FloatConst, FromPrimitive};
 #[derive(Debug, Clone, PartialEq)]
 pub struct Profile<C: CoordFloat = f32> {
     /// Incremental path distance for all following vectors.
-    pub distances_m: Vec<C>,
+    pub distances_m: Box<[C]>,
 
     /// Location of step along the great circle route from `start` to
     /// `end`.
-    pub great_circle: Vec<Point<C>>,
+    pub great_circle: Box<[Point<C>]>,
 
     /// Elevation at each step along the great circle route from
     /// `start` to `end`.
-    pub terrain_elev_m: Vec<C>,
+    pub terrain_elev_m: Box<[C]>,
 
     /// A straight line from `start` to `end`.
-    pub los_elev_m: Vec<C>,
+    pub los_elev_m: Box<[C]>,
 }
 
 impl<C> Profile<C>
@@ -40,6 +41,7 @@ where
             end_alt_m: C::zero(),
             earth_curve: false,
             normalize: false,
+            earth_radius: C::from(MEAN_EARTH_RADIUS).unwrap(),
         }
     }
 }
@@ -67,6 +69,9 @@ pub struct ProfileBuilder<C: CoordFloat = f32> {
     /// the output (defaults to false; has no effect if `earth_curve`
     /// is `false`).
     normalize: bool,
+
+    /// Earth radius, defaults to [MEAN_EARTH_RADIUS].
+    earth_radius: C,
 }
 
 impl<C> ProfileBuilder<C>
@@ -75,36 +80,42 @@ where
     f64: From<C>,
 {
     /// Start point of the path (required).
+    #[must_use]
     pub fn start(mut self, coord: Coord<C>) -> Self {
         self.start = Some(coord);
         self
     }
 
     /// Starting altitude above ground (meters, defaults to 0).
+    #[must_use]
     pub fn start_alt(mut self, meters: C) -> Self {
         self.start_alt_m = meters;
         self
     }
 
     /// Maximum distance between points (required).
+    #[must_use]
     pub fn max_step(mut self, meters: C) -> Self {
         self.max_step_m = Some(meters);
         self
     }
 
     /// End point of the path (required).
+    #[must_use]
     pub fn end(mut self, coord: Coord<C>) -> Self {
         self.end = Some(coord);
         self
     }
 
     /// Starting altitude above ground (meters, defaults to 0).
+    #[must_use]
     pub fn end_alt(mut self, meters: C) -> Self {
         self.end_alt_m = meters;
         self
     }
 
     /// Add earth curvature (defaults to false).
+    #[must_use]
     pub fn earth_curve(mut self, add_curve: bool) -> Self {
         self.earth_curve = add_curve;
         self
@@ -113,8 +124,16 @@ where
     /// Place virtual earth curve as the highest and center point of
     /// the output (defaults to false; has no effect if `earth_curve`
     /// is `false`).
+    #[must_use]
     pub fn normalize(mut self, normalize: bool) -> Self {
         self.normalize = normalize;
+        self
+    }
+
+    /// Earth radius, defaults to [`MEAN_EARTH_RADIUS`].
+    #[must_use]
+    pub fn earth_radius(mut self, earth_radius_m: C) -> Self {
+        self.earth_radius = earth_radius_m;
         self
     }
 
@@ -132,7 +151,7 @@ where
 
         let (great_circle, path_runtime) = {
             let now = std::time::Instant::now();
-            let great_circle: Vec<Point<C>> =
+            let great_circle: Box<[Point<C>]> =
                 HaversineIter::new(Point::from(start), max_step_m, Point::from(end)).collect();
             let runtime = now.elapsed();
             (great_circle, runtime)
@@ -146,7 +165,7 @@ where
                 y: start.y.into(),
             })?;
 
-            for point in &great_circle {
+            for point in &*great_circle {
                 let coord = Coord {
                     x: point.0.x.into(),
                     y: point.0.y.into(),
@@ -161,10 +180,10 @@ where
             }
 
             let runtime = now.elapsed();
-            (terrain, runtime)
+            (terrain.into_boxed_slice(), runtime)
         };
 
-        let distances_m: Vec<C> = linspace(C::zero(), distance_m, terrain_elev_m.len()).collect();
+        let distances_m: Box<[C]> = linspace(C::zero(), distance_m, terrain_elev_m.len()).collect();
 
         let _earth_curve_runtime = {
             let now = std::time::Instant::now();
@@ -205,7 +224,7 @@ where
             now.elapsed()
         };
 
-        let los_elev_m = linspace(
+        let los_elev_m: Box<[C]> = linspace(
             *terrain_elev_m.first().unwrap() + C::from(self.start_alt_m).unwrap(),
             *terrain_elev_m.last().unwrap() + C::from(self.end_alt_m).unwrap(),
             terrain_elev_m.len(),
@@ -217,6 +236,12 @@ where
             great_circle.len(),
             path_runtime,
             terrain_runtime
+        );
+
+        assert!(
+            distances_m.len() == great_circle.len()
+                && great_circle.len() == terrain_elev_m.len()
+                && terrain_elev_m.len() == los_elev_m.len()
         );
 
         Ok(Profile {
@@ -284,20 +309,20 @@ mod tests {
     #[test]
     fn test_profile() {
         let start = Coord {
-            x: -71.30830716441369,
-            y: 44.28309806603165,
+            x: -71.308_307_164_413_69,
+            y: 44.283_098_066_031_65,
         };
         let end = Coord {
-            x: -71.2972073283768,
-            y: 44.25628098424278,
+            x: -71.297_207_328_376_8,
+            y: 44.256_280_984_242_78,
         };
 
         let tile_source = Tiles::new(crate::three_arcsecond_dir(), TileMode::MemMap).unwrap();
 
-        let _90m = 90.0;
+        let d90m = 90.0;
         let profile = Profile::builder()
             .start(start)
-            .max_step(_90m)
+            .max_step(d90m)
             .end(end)
             .build(&tile_source)
             .unwrap();
