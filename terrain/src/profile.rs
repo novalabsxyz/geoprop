@@ -189,13 +189,14 @@ where
             let now = std::time::Instant::now();
             if self.earth_curve {
                 // https://www.trailnotes.org/SizeOfTheEarth/
-                let earth_radius = C::from(crate::constants::MEAN_EARTH_RADIUS).unwrap();
+                let earth_radius = self.earth_radius;
                 let start_elev_alt =
                     *terrain_elev_m.first().unwrap() + C::from(self.start_alt_m).unwrap();
                 let start_radius_m = earth_radius + start_elev_alt;
                 let end_elev_alt =
                     *terrain_elev_m.last().unwrap() + C::from(self.end_alt_m).unwrap();
-                let elev_angle_rad = elevation_angle(start_elev_alt, distance_m, end_elev_alt);
+                let elev_angle_rad =
+                    elevation_angle(start_elev_alt, distance_m, end_elev_alt, self.earth_radius);
 
                 let (nb, nm) = if self.normalize {
                     let nb = -start_elev_alt;

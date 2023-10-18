@@ -148,11 +148,10 @@ where
 }
 
 /// Returns the up/down angle (in radians) from a to b.
-pub fn elevation_angle<T>(start_elev_m: T, distance_m: T, end_elev_m: T) -> T
+pub fn elevation_angle<T>(start_elev_m: T, distance_m: T, end_elev_m: T, earth_radius: T) -> T
 where
     T: Float + FloatConst,
 {
-    let earth_radius = T::from(MEAN_EARTH_RADIUS).unwrap();
     let a = distance_m;
     let b = start_elev_m + earth_radius;
     let c = end_elev_m + earth_radius;
@@ -211,7 +210,7 @@ mod tests {
     fn test_elevation_angle() {
         assert_relative_eq!(
             0.100_167_342_359_641_42,
-            elevation_angle(1.0, 1.0, 1.1),
+            elevation_angle(1.0, 1.0, 1.1, super::MEAN_EARTH_RADIUS),
             epsilon = f64::EPSILON
         );
     }
