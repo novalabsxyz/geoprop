@@ -198,6 +198,7 @@ where
             .end_alt(self.end_alt_m)
             .earth_curve(self.earth_curve)
             .normalize(self.normalize)
+            .earth_radius(self.earth_radius)
             .build(tiles)?;
 
         // Unwrap is fine as profiles always have at least two points.
