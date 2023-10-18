@@ -8,62 +8,89 @@ use terrain::{constants::MEAN_EARTH_RADIUS, Profile, Tiles};
 
 /// Point to point propogation estimate.
 #[derive(Debug, Clone)]
-pub struct Point2Point<C: CoordFloat> {
+pub struct Point2Point<T: CoordFloat> {
     /// Incremental path distance for all following vectors.
-    pub distances_m: Box<[C]>,
+    pub distances_m: Box<[T]>,
 
     /// Location of step along the great circle route from `start` to
     /// `end`.
-    pub great_circle: Box<[Point<C>]>,
+    pub great_circle: Box<[Point<T>]>,
 
     /// Elevation at each step along the great circle route from
     /// `start` to `end`.
-    pub terrain_elev_m: Box<[C]>,
+    pub terrain_elev_m: Box<[T]>,
 
     /// A straight line from `start` to `end`.
-    pub los_elev_m: Box<[C]>,
+    pub los_elev_m: Box<[T]>,
 
     /// Fresnel zone thickness from `start` to `end`.
-    pub fresnel_zone_m: Box<[C]>,
+    ///
+    /// Due to its usefullness, this is the lower envelope of the
+    /// fresnel zone.
+    pub lower_fresnel_zone_m: Box<[T]>,
 }
 
-impl<C> Point2Point<C>
+impl<T> Point2Point<T>
 where
-    C: CoordFloat,
+    T: CoordFloat,
 {
-    pub fn builder() -> Point2PointBuilder<C> {
+    /// Returns a `Point2Point` builder.
+    ///
+    /// See [`Point2PointBuilder`] docs.
+    pub fn builder() -> Point2PointBuilder<T> {
         Point2PointBuilder {
             freq_hz: None,
             start: None,
             max_step_m: None,
             end: None,
-            start_alt_m: C::zero(),
-            end_alt_m: C::zero(),
+            start_alt_m: T::zero(),
+            end_alt_m: T::zero(),
             earth_curve: false,
             normalize: false,
-            earth_radius: C::from(MEAN_EARTH_RADIUS).unwrap(),
+            earth_radius: T::from(MEAN_EARTH_RADIUS).unwrap(),
         }
+    }
+
+    /// Returns how may points are in the path.
+    pub fn len(&self) -> usize {
+        // Point2Point can never be empty.
+        #![allow(clippy::len_without_is_empty)]
+        // All member lengths are the same and enforced at
+        // construction, so any will do.
+        self.distances_m.len()
+    }
+
+    /// Returns an iterator over the elements of the upper fresnel
+    /// zone.
+    pub fn upper_fresnel_iter(&self) -> impl Iterator<Item = T> + '_
+    where
+        T: Float,
+    {
+        self.lower_fresnel_zone_m
+            .iter()
+            .zip(self.los_elev_m.iter())
+            .map(|(&bottom, &los)| los + los - bottom)
     }
 }
 
-pub struct Point2PointBuilder<C: CoordFloat = f32> {
+pub struct Point2PointBuilder<T: CoordFloat = f32> {
     /// Transmitter frequency (required).
-    freq_hz: Option<C>,
+    freq_hz: Option<T>,
 
     /// Start point of the path (required).
-    start: Option<Coord<C>>,
+    start: Option<Coord<T>>,
 
     /// Maximum distance between points (required).
-    max_step_m: Option<C>,
+    max_step_m: Option<T>,
 
     /// End point of the path (required).
-    end: Option<Coord<C>>,
+    end: Option<Coord<T>>,
 
     /// Starting altitude above ground (meters, defaults to 0).
-    start_alt_m: C,
+    start_alt_m: T,
 
     /// Starting altitude above ground (meters, defaults to 0).
-    end_alt_m: C,
+    end_alt_m: T,
 
     /// Add earth curvature (defaults to false).
     earth_curve: bool,
@@ -74,52 +101,52 @@ pub struct Point2PointBuilder<C: CoordFloat = f32> {
     normalize: bool,
 
     /// Earth radius, defaults to [MEAN_EARTH_RADIUS].
-    earth_radius: C,
+    earth_radius: T,
 }
 
-impl<C> Point2PointBuilder<C>
+impl<T> Point2PointBuilder<T>
 where
-    C: CoordFloat + FromPrimitive,
-    f64: From<C>,
+    T: CoordFloat + FromPrimitive,
+    f64: From<T>,
 {
     /// Frequency of signal (Hz, required).
     #[must_use]
-    pub fn freq(mut self, freq_hz: C) -> Self {
+    pub fn freq(mut self, freq_hz: T) -> Self {
         self.freq_hz = Some(freq_hz);
         self
     }
 
     /// Start point of the path (required).
     #[must_use]
-    pub fn start(mut self, coord: Coord<C>) -> Self {
+    pub fn start(mut self, coord: Coord<T>) -> Self {
         self.start = Some(coord);
         self
     }
 
     /// Starting altitude above ground (meters, defaults to 0).
     #[must_use]
-    pub fn start_alt(mut self, meters: C) -> Self {
+    pub fn start_alt(mut self, meters: T) -> Self {
         self.start_alt_m = meters;
         self
     }
 
     /// Maximum distance between points (required).
     #[must_use]
-    pub fn max_step(mut self, meters: C) -> Self {
+    pub fn max_step(mut self, meters: T) -> Self {
         self.max_step_m = Some(meters);
         self
     }
 
     /// End point of the path (required).
     #[must_use]
-    pub fn end(mut self, coord: Coord<C>) -> Self {
+    pub fn end(mut self, coord: Coord<T>) -> Self {
         self.end = Some(coord);
         self
     }
 
     /// Starting altitude above ground (meters, defaults to 0).
     #[must_use]
-    pub fn end_alt(mut self, meters: C) -> Self {
+    pub fn end_alt(mut self, meters: T) -> Self {
         self.end_alt_m = meters;
         self
     }
@@ -142,16 +169,16 @@ where
 
     /// Earth radius (meters, defaults to [`MEAN_EARTH_RADIUS`]).
     #[must_use]
-    pub fn earth_radius(mut self, earth_radius_m: C) -> Self {
+    pub fn earth_radius(mut self, earth_radius_m: T) -> Self {
         self.earth_radius = earth_radius_m;
         self
     }
 
-    pub fn build(&self, tiles: &Tiles) -> Result<Point2Point<C>, PropahError>
+    pub fn build(&self, tiles: &Tiles) -> Result<Point2Point<T>, PropahError>
     where
-        C: FloatConst + Float + 'static,
-        usize: AsPrimitive<C>,
-        C: AsPrimitive<usize>,
+        T: FloatConst + Float + 'static,
+        usize: AsPrimitive<T>,
+        T: AsPrimitive<usize>,
     {
         let freq_hz = self.freq_hz.ok_or(PropahError::Builder("freq"))?;
         let start = self.start.ok_or(PropahError::Builder("start"))?;
@@ -177,23 +204,28 @@ where
         let total_distance_m = *distances_m.last().unwrap();
         let wavelen = freq_to_wavelen(freq_hz);
         let fresnel_zone_1 = 1.as_();
-        let fresnel_zone_m: Box<[C]> = distances_m
+        let fresnel_zone_m: Box<[T]> = distances_m
             .iter()
-            .map(|&d1| fresnel(fresnel_zone_1, wavelen, d1, total_distance_m))
+            .zip(los_elev_m.iter())
+            .map(|(&d1, &los_elev_m)| {
+                los_elev_m - fresnel(fresnel_zone_1, wavelen, d1, total_distance_m)
+            })
             .collect();
 
         assert!(
             distances_m.len() == great_circle.len()
                 && great_circle.len() == terrain_elev_m.len()
                 && terrain_elev_m.len() == los_elev_m.len()
-                && los_elev_m.len() == fresnel_zone_m.len()
+                && los_elev_m.len() == fresnel_zone_m.len(),
+            "all vectors in report must have the same length"
         );
+
         Ok(Point2Point {
             distances_m,
             great_circle,
             terrain_elev_m,
             los_elev_m,
-            fresnel_zone_m,
+            lower_fresnel_zone_m: fresnel_zone_m,
         })
     }
 }

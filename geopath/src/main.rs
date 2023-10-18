@@ -8,7 +8,7 @@ use itertools::Itertools;
 use num_traits::{AsPrimitive, Float, FromPrimitive};
 use options::{Cli, Command as CliCmd};
 use propah::Point2Point;
-use rfprop::TerrainProfile;
+use rfprop::TerrainProfile as SigServeProfile;
 use serde::Serialize;
 use std::{io::Write, path::Path};
 use terrain::{
@@ -144,7 +144,6 @@ fn print_csv<T: CoordFloat + std::fmt::Display>(
     {
         let longitude = point.x();
         let latitude = point.y();
-        let fresnel = *los - *fresnel;
         writeln!(
             stdout,
             "{distance},{longitude},{latitude},{los},{elevation},{fresnel}",
@@ -244,7 +243,7 @@ impl<T: CoordFloat> From<Point2Point<T>> for CommonProfile<T> {
             great_circle,
             los_elev_m,
             terrain_elev_m,
-            fresnel_zone_m,
+            lower_fresnel_zone_m: fresnel_zone_m,
         }: Point2Point<T>,
     ) -> Self {
         Self {
@@ -257,15 +256,15 @@ impl<T: CoordFloat> From<Point2Point<T>> for CommonProfile<T> {
     }
 }
 
-impl From<TerrainProfile> for CommonProfile<f32> {
+impl From<SigServeProfile> for CommonProfile<f32> {
     fn from(
-        TerrainProfile {
+        SigServeProfile {
             distance,
             los,
             terrain,
             fresnel,
             ..
-        }: TerrainProfile,
+        }: SigServeProfile,
     ) -> Self {
         let distances_m = distance.iter().map(|val| *val as f32 * 1000.0).collect();
         let los_elev_m = los.iter().map(|val| *val as f32).collect();
@@ -284,15 +283,15 @@ impl From<TerrainProfile> for CommonProfile<f32> {
     }
 }
 
-impl From<TerrainProfile> for CommonProfile<f64> {
+impl From<SigServeProfile> for CommonProfile<f64> {
     fn from(
-        TerrainProfile {
+        SigServeProfile {
             mut distance,
             los,
             terrain,
             fresnel,
             ..
-        }: TerrainProfile,
+        }: SigServeProfile,
     ) -> Self {
         distance.iter_mut().for_each(|val| *val *= 1000.0);
         let great_circle = std::iter::repeat(point!(x: 0.0, y:0.0))
