@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "geopath",
+  "hexit",
   "itm",
   "nasadem",
   "propah",
