@@ -224,6 +224,13 @@ impl Tile {
         }
     }
 
+    /// Returns the number of samples in this tile.
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        let (x, y) = self.dimensions;
+        x * y
+    }
+
     /// Returns the lowest elevation sample in this tile.
     pub fn min_elevation(&self) -> i16 {
         let mut min_elevation = self.min_elevation.load(Ordering::Relaxed);
@@ -314,8 +321,8 @@ impl Tile {
     fn xy_to_polygon(&self, (x, y): (usize, usize)) -> Polygon<C> {
         #[allow(clippy::cast_precision_loss)]
         let center = Coord {
-            x: self.sw_corner_center.x + (y as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
-            y: self.sw_corner_center.y + (x as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
+            x: self.sw_corner_center.x + (x as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
+            y: self.sw_corner_center.y + (y as C * C::from(self.resolution)) / ARCSEC_PER_DEG,
         };
         polygon(&center, C::from(self.resolution))
     }
