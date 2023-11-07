@@ -1,4 +1,4 @@
-use crate::{options::Tesselate, progress_bar::make_progress_bar};
+use crate::{options::Tesselate, progress};
 use anyhow::Result;
 use byteorder::{LittleEndian as LE, WriteBytesExt};
 use flate2::{write::GzEncoder, Compression};
@@ -47,14 +47,10 @@ impl Tesselate {
         };
 
         let tile = Tile::memmap(height_file_path)?;
-        let progress_bar = make_progress_bar(out_file_name, tile.len() as u64);
+        let pb = progress_group.add(progress::bar(out_file_name, tile.len() as u64));
         let tmp_out_file = File::create(&out_file_tmp_path)?;
         let tmp_out_wtr = GzEncoder::new(tmp_out_file, Compression::new(self.compression));
-        self.polyfill_tile(
-            &tile,
-            &progress_group.add(progress_bar),
-            BufWriter::new(tmp_out_wtr),
-        )?;
+        self.polyfill_tile(&tile, &pb, BufWriter::new(tmp_out_wtr))?;
         fs::rename(out_file_tmp_path, out_file_path)?;
         Ok(())
     }

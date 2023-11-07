@@ -6,14 +6,15 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub enum Cli {
-    /// Generate a tessellated list of (cell, elevation) for each
-    /// input file.
     Tessellate(Tesselate),
 
-    /// Combine previously tesselated files into a single
     Combine(Combine),
+
+    Lookup(Lookup),
 }
 
+/// Generate a tessellated list of (cell, elevation) for each
+/// input file.
 #[derive(Debug, Clone, Args)]
 pub struct Tesselate {
     /// Reprocess height file even if corresponding output already
@@ -36,6 +37,7 @@ pub struct Tesselate {
     pub input: Vec<PathBuf>,
 }
 
+/// Combine previously tesselated files into a single
 #[derive(Debug, Clone, Args)]
 pub struct Combine {
     #[arg(short, long, default_value_t = Resolution::Ten)]
@@ -46,4 +48,11 @@ pub struct Combine {
 
     /// Input tessaltions.
     pub input: Vec<PathBuf>,
+}
+
+/// Lookup value for H3 cell in a disktree.
+#[derive(Debug, Clone, Args)]
+pub struct Lookup {
+    pub disktree: PathBuf,
+    pub cell: String,
 }

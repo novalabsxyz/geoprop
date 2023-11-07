@@ -1,4 +1,4 @@
-use crate::{options::Combine, progress_bar::make_progress_bar};
+use crate::{options::Combine, progress};
 use anyhow::Result;
 use byteorder::{LittleEndian as LE, ReadBytesExt, WriteBytesExt};
 use flate2::bufread::GzDecoder;
@@ -34,7 +34,7 @@ impl Combine {
             .expect("we already parsed the tile, therefore path must be a file");
 
         let n_samples = rdr.read_u64::<LE>()?;
-        let pb = progress_group.add(make_progress_bar(tess_file_name.to_string(), n_samples));
+        let pb = progress_group.add(progress::bar(tess_file_name.to_string(), n_samples));
         for _sample_n in 0..n_samples {
             let elevation = rdr.read_i16::<LE>()?;
             let n_cells = rdr.read_u16::<LE>()?;
@@ -66,8 +66,10 @@ impl Combine {
             .to_str()
             .expect("we already parsed the tile, therefore path must be a file");
         let disktree_len = hextree.len();
-        let pb = make_progress_bar(disktree_file_name.to_string(), disktree_len as u64);
-        let pb = progress_group.add(pb);
+        let pb = progress_group.add(progress::bar(
+            disktree_file_name.to_string(),
+            disktree_len as u64,
+        ));
         hextree.to_disktree(disktree_file, |wtr, val| {
             pb.inc(1);
             wtr.write_i16::<LE>(*val)
@@ -86,8 +88,10 @@ impl Combine {
         }
 
         let mut disktree = DiskTree::open(&self.out)?;
-        let pb = make_progress_bar("Validating disktree".to_string(), hextree.len() as u64);
-        let pb = progress_group.add(pb);
+        let pb = progress_group.add(progress::bar(
+            "Validating disktree".to_string(),
+            hextree.len() as u64,
+        ));
         let mut count = 0;
         for res in disktree.iter(value_reader)? {
             let (cell, value) = res?;

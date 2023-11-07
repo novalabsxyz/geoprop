@@ -1,6 +1,7 @@
 mod combine;
+mod lookup;
 mod options;
-mod progress_bar;
+mod progress;
 mod tesselate;
 
 use anyhow::Result;
@@ -12,5 +13,6 @@ fn main() -> Result<()> {
     match cli {
         Cli::Tessellate(tesselate) => tesselate.run(),
         Cli::Combine(combine) => combine.run(),
+        Cli::Lookup(lookup) => lookup.run(),
     }
 }
