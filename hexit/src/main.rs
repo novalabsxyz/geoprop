@@ -1,5 +1,6 @@
 mod combine;
 mod options;
+mod progress_bar;
 mod tesselate;
 
 use anyhow::Result;

@@ -38,11 +38,11 @@ pub struct Tesselate {
 
 #[derive(Debug, Clone, Args)]
 pub struct Combine {
-    #[arg(short, long)]
+    #[arg(short, long, default_value_t = Resolution::Ten)]
     pub resolution: Resolution,
 
     #[arg(short, long)]
-    pub out_path: PathBuf,
+    pub out: PathBuf,
 
     /// Input tessaltions.
     pub input: Vec<PathBuf>,

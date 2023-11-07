@@ -1,4 +1,4 @@
-use crate::options::Tesselate;
+use crate::{options::Tesselate, progress_bar::make_progress_bar};
 use anyhow::Result;
 use byteorder::{LittleEndian as LE, WriteBytesExt};
 use flate2::{write::GzEncoder, Compression};
@@ -6,7 +6,7 @@ use h3o::{
     geom::{PolyfillConfig, Polygon, ToCells},
     CellIndex, Resolution,
 };
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar};
 use nasadem::{Sample, Tile};
 use rayon::prelude::*;
 use std::{
@@ -65,6 +65,7 @@ impl Tesselate {
         progress_bar: &ProgressBar,
         mut out: impl Write,
     ) -> Result<()> {
+        out.write_u64::<LE>(tile.len() as u64)?;
         for sample in tile.iter() {
             let (elev, hexes) = polyfill_sample(&sample, self.resolution)?;
             out.write_i16::<LE>(elev)?;
@@ -86,17 +87,4 @@ fn polyfill_sample(sample: &Sample, resolution: Resolution) -> Result<(i16, Vec<
     cells.sort_unstable();
     cells.dedup();
     Ok((elevation, cells))
-}
-
-/// Returns a progress bar object for the given parquet file and name.
-fn make_progress_bar(prefix: String, total_size: u64) -> ProgressBar {
-    #[allow(clippy::cast_sign_loss)]
-    let pb = ProgressBar::new(total_size);
-    pb.set_prefix(prefix);
-    pb.set_style(
-        ProgressStyle::with_template("{prefix}...\n[{wide_bar:.cyan/blue}]")
-            .expect("incorrect progress bar format string")
-            .progress_chars("#>-"),
-    );
-    pb
 }
