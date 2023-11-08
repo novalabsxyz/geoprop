@@ -17,6 +17,12 @@ pub enum Cli {
 /// input file.
 #[derive(Debug, Clone, Args)]
 pub struct Tesselate {
+    /// Path GeoJSON mask.
+    ///
+    /// Any tiles which do not intersect the mask are ignored.
+    #[arg(short, long)]
+    pub mask: Option<PathBuf>,
+
     /// Reprocess height file even if corresponding output already
     /// exists.
     #[arg(short = 'O', long)]
@@ -40,6 +46,12 @@ pub struct Tesselate {
 /// Combine previously tesselated files into a single
 #[derive(Debug, Clone, Args)]
 pub struct Combine {
+    /// Path GeoJSON mask.
+    ///
+    /// Any samples which do not intersect the mask are ignored.
+    #[arg(short, long)]
+    pub mask: Option<PathBuf>,
+
     #[arg(short, long, default_value_t = Resolution::Ten)]
     pub resolution: Resolution,
 

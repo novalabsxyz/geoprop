@@ -10,6 +10,7 @@ clap       = { version = "4.4.2", features = ["derive"] }
 env_logger = "0.10"
 flate2     = "1.0.28"
 geo        = { workspace = true }
+geojson    = "0.24.1"
 h3o        = { version = "0.4.0", features = ["geo"] }
 hextree    = { git = "https://github.com/JayKickliter/HexTree.git", branch = "jsk/add-disk-repr", features = ["disktree"] }
 indicatif  = "0.17.7"

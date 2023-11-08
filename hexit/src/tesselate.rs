@@ -1,7 +1,8 @@
-use crate::{options::Tesselate, progress};
+use crate::{mask, options::Tesselate, progress};
 use anyhow::Result;
 use byteorder::{LittleEndian as LE, WriteBytesExt};
 use flate2::{write::GzEncoder, Compression};
+use geo::{GeometryCollection, Intersects};
 use h3o::{
     geom::{PolyfillConfig, Polygon, ToCells},
     CellIndex, Resolution,
@@ -18,19 +19,24 @@ use std::{
 impl Tesselate {
     pub fn run(&self) -> Result<()> {
         let progress_group = MultiProgress::new();
-        self.input
-            .par_iter()
-            .try_for_each(|height_file_path| self._run(height_file_path, &progress_group))?;
+        let mask = mask::open(self.mask.as_deref())?;
+        self.input.par_iter().try_for_each(|height_file_path| {
+            self._run(height_file_path, mask.as_ref(), &progress_group)
+        })?;
         Ok(())
     }
 
-    fn _run(&self, height_file_path: &Path, progress_group: &MultiProgress) -> Result<()> {
+    fn _run(
+        &self,
+        height_file_path: &Path,
+        mask: Option<&GeometryCollection>,
+        progress_group: &MultiProgress,
+    ) -> Result<()> {
         let out_file_name = {
             let file_name = height_file_path
                 .file_name()
-                .expect("we already parsed the tile, therefore path must be a file")
-                .to_str()
-                .expect("we already parsed the tile, therefore path must be a file");
+                .and_then(|n| n.to_str())
+                .expect("already opened, therefore path must be a file");
             format!("{file_name}.res{}.h3tez", self.resolution)
         };
         let out_file_path = self.out_dir.clone().join(&out_file_name);
@@ -47,11 +53,17 @@ impl Tesselate {
         };
 
         let tile = Tile::memmap(height_file_path)?;
-        let pb = progress_group.add(progress::bar(out_file_name, tile.len() as u64));
-        let tmp_out_file = File::create(&out_file_tmp_path)?;
-        let tmp_out_wtr = GzEncoder::new(tmp_out_file, Compression::new(self.compression));
-        self.polyfill_tile(&tile, &pb, BufWriter::new(tmp_out_wtr))?;
-        fs::rename(out_file_tmp_path, out_file_path)?;
+        let intersects = mask
+            .as_ref()
+            .map_or(true, |mask| mask.intersects(&tile.polygon()));
+        if intersects {
+            let pb = progress_group.add(progress::bar(out_file_name, tile.len() as u64));
+            let tmp_out_file = File::create(&out_file_tmp_path)?;
+            let tmp_out_wtr = GzEncoder::new(tmp_out_file, Compression::new(self.compression));
+            self.polyfill_tile(&tile, &pb, BufWriter::new(tmp_out_wtr))?;
+            fs::rename(out_file_tmp_path, out_file_path)?;
+        }
+
         Ok(())
     }
 

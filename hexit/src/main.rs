@@ -1,5 +1,6 @@
 mod combine;
 mod lookup;
+mod mask;
 mod options;
 mod progress;
 mod tesselate;

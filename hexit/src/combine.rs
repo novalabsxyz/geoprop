@@ -1,7 +1,9 @@
-use crate::{options::Combine, progress};
+use crate::{mask, options::Combine, progress};
 use anyhow::Result;
 use byteorder::{LittleEndian as LE, ReadBytesExt, WriteBytesExt};
 use flate2::bufread::GzDecoder;
+use geo::{coord, GeometryCollection, Intersects};
+use h3o::{CellIndex, LatLng};
 use hextree::{compaction::EqCompactor, disktree::DiskTree, Cell, HexTreeMap};
 use indicatif::MultiProgress;
 use std::{fs::File, io::BufReader, path::Path};
@@ -11,8 +13,9 @@ impl Combine {
         assert!(!self.input.is_empty());
         let mut hextree: HexTreeMap<i16, EqCompactor> = HexTreeMap::with_compactor(EqCompactor);
         let progress_group = MultiProgress::new();
+        let mask = mask::open(self.mask.as_deref())?;
         for tess_file_path in &self.input {
-            Self::read_tessellation(tess_file_path, &progress_group, &mut hextree)?;
+            Self::read_tessellation(tess_file_path, &progress_group, mask.as_ref(), &mut hextree)?;
         }
         self.write_disktree(&hextree, &progress_group)?;
         self.verify_disktree(&hextree, &progress_group)?;
@@ -22,6 +25,7 @@ impl Combine {
     fn read_tessellation(
         tess_file_path: &Path,
         progress_group: &MultiProgress,
+        mask: Option<&GeometryCollection>,
         hextree: &mut HexTreeMap<i16, EqCompactor>,
     ) -> Result<()> {
         let tess_file = File::open(tess_file_path)?;
@@ -29,9 +33,8 @@ impl Combine {
         let mut rdr = GzDecoder::new(tess_buf_rdr);
         let tess_file_name = tess_file_path
             .file_name()
-            .expect("we already parsed the tile, therefore path must be a file")
-            .to_str()
-            .expect("we already parsed the tile, therefore path must be a file");
+            .and_then(|n| n.to_str())
+            .expect("already opened, therefore path must be a file");
 
         let n_samples = rdr.read_u64::<LE>()?;
         let pb = progress_group.add(progress::bar(tess_file_name.to_string(), n_samples));
@@ -41,7 +44,15 @@ impl Combine {
             for _cell_n in 0..n_cells {
                 let raw_cell = rdr.read_u64::<LE>()?;
                 let cell = hextree::Cell::from_raw(raw_cell)?;
-                hextree.insert(cell, elevation);
+                let mask_contains_cell = mask.as_ref().map_or(true, |mask| {
+                    let cell_index = CellIndex::try_from(cell.into_raw()).unwrap();
+                    let cell_center = LatLng::from(cell_index);
+                    let coord = coord!(x: cell_center.lng(), y: cell_center.lat());
+                    mask.intersects(&coord)
+                });
+                if mask_contains_cell {
+                    hextree.insert(cell, elevation);
+                }
             }
             pb.inc(1);
         }
@@ -62,9 +73,8 @@ impl Combine {
         let disktree_file_name = self
             .out
             .file_name()
-            .expect("we already parsed the tile, therefore path must be a file")
-            .to_str()
-            .expect("we already parsed the tile, therefore path must be a file");
+            .and_then(|n| n.to_str())
+            .expect("already opened, therefore path must be a file");
         let disktree_len = hextree.len();
         let pb = progress_group.add(progress::bar(
             disktree_file_name.to_string(),
