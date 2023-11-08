@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "geopath",
+  "itm",
   "nasadem",
   "propah",
   "terrain",
@@ -10,12 +11,14 @@ resolver = "2"
 [workspace.dependencies]
 approx     = "0.5.1"
 byteorder  = "1.4.3"
+clap       = { version = "4.4.2", features = ["derive"] }
 criterion  = { version = "0.5", features = ["html_reports"] }
 dashmap    = "5.5.3"
 geo        = "0.26.0"
 log        = "0.4.20"
 memmap2    = "0.7.1"
 num-traits = "0.2.16"
+serde      = { version = "1", features = ["derive"] }
 thiserror  = "1.0.48"
 
 # We want meaninful stack traces when profiling/debugging
