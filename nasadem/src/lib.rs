@@ -285,6 +285,23 @@ impl Tile {
     pub fn iter(&self) -> impl Iterator<Item = Sample<'_>> + '_ {
         (0..(self.dimensions.0 * self.dimensions.1)).map(|index| Sample { tile: self, index })
     }
+
+    /// Returns this tile's outline as a polygon.
+    pub fn polygon(&self) -> Polygon {
+        let delta = C::from(self.resolution) * HALF_ARCSEC;
+        let n = self.ne_corner_center.y + delta;
+        let e = self.sw_corner_center.x + delta;
+        let s = self.sw_corner_center.y - delta;
+        let w = self.sw_corner_center.x - delta;
+
+        polygon![
+            (x: w, y: s),
+            (x: e, y: s),
+            (x: e, y: n),
+            (x: w, y: n),
+            (x: w, y: s),
+        ]
+    }
 }
 
 /// Private API
@@ -373,12 +390,15 @@ impl<'a> std::cmp::PartialEq for Sample<'a> {
 impl<'a> std::cmp::Eq for Sample<'a> {}
 
 fn extract_resolution<P: AsRef<Path>>(path: P) -> Result<(u8, (usize, usize)), NasademError> {
-    const RES_1_ARCSECONDS_FIBE_BEN: u64 = 3601 * 3601 * size_of::<u16>() as u64;
-    const RES_3_ARCSECONDS_FIBE_BEN: u64 = 1201 * 1201 * size_of::<u16>() as u64;
+    const RES_1_ARCSECONDS_FILE_LEN: u64 = 3601 * 3601 * size_of::<u16>() as u64;
+    const RES_3_ARCSECONDS_FILE_LEN: u64 = 1201 * 1201 * size_of::<u16>() as u64;
     match path.as_ref().metadata().map(|m| m.len())? {
-        RES_1_ARCSECONDS_FIBE_BEN => Ok((1, (3601, 3601))),
-        RES_3_ARCSECONDS_FIBE_BEN => Ok((3, (1201, 1201))),
-        invalid_len => Err(NasademError::HgtLen(invalid_len)),
+        RES_1_ARCSECONDS_FILE_LEN => Ok((1, (3601, 3601))),
+        RES_3_ARCSECONDS_FILE_LEN => Ok((3, (1201, 1201))),
+        invalid_len => Err(NasademError::HgtLen(
+            invalid_len,
+            path.as_ref().to_path_buf(),
+        )),
     }
 }
 
@@ -393,14 +413,14 @@ fn parse_sw_corner<P: AsRef<Path>>(path: P) -> Result<Coord<i16>, NasademError> 
         return Err(mk_err());
     }
     let lat_sign = match &name[0..1] {
-        "N" => 1,
-        "S" => -1,
+        "N" | "n" => 1,
+        "S" | "s" => -1,
         _ => return Err(mk_err()),
     };
     let lat = lat_sign * name[1..3].parse::<i16>().map_err(|_| mk_err())?;
     let lon_sign = match &name[3..4] {
-        "E" => 1,
-        "W" => -1,
+        "E" | "e" => 1,
+        "W" | "w" => -1,
         _ => return Err(mk_err()),
     };
     let lon = lon_sign * name[4..7].parse::<i16>().map_err(|_| mk_err())?;
