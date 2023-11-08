@@ -6,7 +6,7 @@ use geo::{coord, GeometryCollection, Intersects};
 use h3o::{CellIndex, LatLng};
 use hextree::{compaction::EqCompactor, disktree::DiskTree, Cell, HexTreeMap};
 use indicatif::MultiProgress;
-use std::{fs::File, io::BufReader, path::Path};
+use std::{ffi::OsStr, fs::File, io::BufReader, path::Path};
 
 impl Combine {
     pub fn run(&self) -> Result<()> {
@@ -33,7 +33,7 @@ impl Combine {
         let mut rdr = GzDecoder::new(tess_buf_rdr);
         let tess_file_name = tess_file_path
             .file_name()
-            .and_then(|n| n.to_str())
+            .and_then(OsStr::to_str)
             .expect("already opened, therefore path must be a file");
 
         let n_samples = rdr.read_u64::<LE>()?;
@@ -73,7 +73,7 @@ impl Combine {
         let disktree_file_name = self
             .out
             .file_name()
-            .and_then(|n| n.to_str())
+            .and_then(OsStr::to_str)
             .expect("already opened, therefore path must be a file");
         let disktree_len = hextree.len();
         let pb = progress_group.add(progress::bar(

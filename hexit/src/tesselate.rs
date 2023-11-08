@@ -11,6 +11,7 @@ use indicatif::{MultiProgress, ProgressBar};
 use nasadem::{Sample, Tile};
 use rayon::prelude::*;
 use std::{
+    ffi::OsStr,
     fs::{self, File},
     io::{BufWriter, Write},
     path::Path,
@@ -35,7 +36,7 @@ impl Tesselate {
         let out_file_name = {
             let file_name = height_file_path
                 .file_name()
-                .and_then(|n| n.to_str())
+                .and_then(OsStr::to_str)
                 .expect("already opened, therefore path must be a file");
             format!("{file_name}.res{}.h3tez", self.resolution)
         };
