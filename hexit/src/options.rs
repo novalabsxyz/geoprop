@@ -65,6 +65,9 @@ pub struct Combine {
 /// Lookup value for H3 cell in a disktree.
 #[derive(Debug, Clone, Args)]
 pub struct Lookup {
+    /// Iterate through the disktree instead of `get`ting the value.
+    #[arg(short, long)]
+    pub iter: bool,
     pub disktree: PathBuf,
     pub cell: String,
 }
