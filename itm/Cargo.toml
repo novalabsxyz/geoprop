@@ -1,0 +1,33 @@
+[package]
+categories   = ["science"]
+description  = "A wrapper around NTIA's Irregular Terrain Model"
+edition      = "2021"
+homepage     = "https://github.com/jaykickliter/geoprof"
+keywords     = ["rf", "radio", "modeling", "ntia"]
+license-file = "LICENSE.md"
+name         = "itm"
+readme       = "README.md"
+repository   = "https://github.com/jaykickliter/geoprof"
+version      = "0.1.0"
+
+[features]
+default           = []
+address_sanitizer = []
+serde             = ["serde/derive"]
+
+[dependencies]
+cxx       = "1"
+serde     = { workspace = true, optional = true }
+thiserror = { workspace = true }
+
+[build-dependencies]
+cxx-build = "1"
+
+[dev-dependencies]
+anyhow  = "1"
+clap    = { workspace = true }
+geo     = { workspace = true }
+terrain = { path = "../terrain" }
+
+[[example]]
+name = "p2p"
