@@ -18,7 +18,8 @@ itertools  = "0.10"
 nasadem    = { path = "../nasadem" }
 num-traits = { workspace = true }
 rayon      = "1.8.0"
-
+serde      = { workspace = true }
+serde_json = { workspace = true }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 tikv-jemallocator = "0.5"

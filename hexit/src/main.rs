@@ -1,4 +1,6 @@
 mod combine;
+mod elevation;
+mod json;
 mod lookup;
 mod mask;
 mod options;
@@ -21,5 +23,6 @@ fn main() -> Result<()> {
         Cli::Tessellate(tesselate) => tesselate.run(),
         Cli::Combine(combine) => combine.run(),
         Cli::Lookup(lookup) => lookup.run(),
+        Cli::Json(json) => json.run(),
     }
 }

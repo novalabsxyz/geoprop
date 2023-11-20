@@ -1,28 +1,59 @@
-use crate::{options::Combine, progress};
+use crate::{
+    elevation::{Elevation, ReducedElevation},
+    options::Combine,
+    progress,
+};
 use anyhow::Result;
 use byteorder::{LittleEndian as LE, ReadBytesExt, WriteBytesExt};
 use flate2::bufread::GzDecoder;
-use hextree::{compaction::EqCompactor, disktree::DiskTree, Cell, HexTreeMap};
+use hextree::{compaction::Compactor, Cell, HexTreeMap};
 use indicatif::MultiProgress;
 use std::{ffi::OsStr, fs::File, io::BufReader, path::Path};
+
+struct ReductionCompactor {
+    target_resolution: u8,
+    source_resolution: u8,
+}
+
+impl Compactor<Elevation> for ReductionCompactor {
+    fn compact(&mut self, cell: Cell, children: [Option<&Elevation>; 7]) -> Option<Elevation> {
+        if cell.res() < self.target_resolution {
+            None
+        } else if let [Some(v0), Some(v1), Some(v2), Some(v3), Some(v4), Some(v5), Some(v6)] =
+            children
+        {
+            Some(Elevation::concat(
+                self.source_resolution,
+                cell.res(),
+                &[*v0, *v1, *v2, *v3, *v4, *v5, *v6],
+            ))
+        } else {
+            None
+        }
+    }
+}
 
 impl Combine {
     pub fn run(&self) -> Result<()> {
         assert!(!self.input.is_empty());
-        let mut hextree: HexTreeMap<i16, EqCompactor> = HexTreeMap::with_compactor(EqCompactor);
+        let mut hextree: HexTreeMap<Elevation, ReductionCompactor> =
+            HexTreeMap::with_compactor(ReductionCompactor {
+                source_resolution: self.source_resolution as u8,
+                target_resolution: self.target_resolution as u8,
+            });
         let progress_group = MultiProgress::new();
         for tess_file_path in &self.input {
             Self::read_tessellation(tess_file_path, &progress_group, &mut hextree)?;
         }
+        let hextree = self.reduce_hextree(&hextree, &progress_group);
         self.write_disktree(&hextree, &progress_group)?;
-        self.verify_disktree(&hextree, &progress_group)?;
         Ok(())
     }
 
     fn read_tessellation(
         tess_file_path: &Path,
         progress_group: &MultiProgress,
-        hextree: &mut HexTreeMap<i16, EqCompactor>,
+        hextree: &mut HexTreeMap<Elevation, ReductionCompactor>,
     ) -> Result<()> {
         let tess_file = File::open(tess_file_path)?;
         let tess_buf_rdr = BufReader::new(tess_file);
@@ -38,7 +69,7 @@ impl Combine {
             let raw_cell = rdr.read_u64::<LE>()?;
             let cell = hextree::Cell::from_raw(raw_cell)?;
             let elevation = rdr.read_i16::<LE>()?;
-            hextree.insert(cell, elevation);
+            hextree.insert(cell, Elevation::Plain(elevation));
             pb.inc(1);
         }
         assert!(
@@ -49,9 +80,32 @@ impl Combine {
         Ok(())
     }
 
+    fn reduce_hextree(
+        &self,
+        hextree: &HexTreeMap<Elevation, ReductionCompactor>,
+        _progress_group: &MultiProgress,
+    ) -> HexTreeMap<ReducedElevation> {
+        let mut reduced_hextree = HexTreeMap::new();
+        let max_child_cnt =
+            7_usize.pow(self.source_resolution as u32 - self.target_resolution as u32);
+        for (cell, elev) in hextree.iter() {
+            match elev {
+                Elevation::Intermediate(intermediate)
+                    if cell.res() == self.target_resolution as u8 =>
+                {
+                    assert_eq!(intermediate.n, max_child_cnt);
+                    let reduction = intermediate.reduce();
+                    reduced_hextree.insert(cell, reduction);
+                }
+                _ => {}
+            };
+        }
+        reduced_hextree
+    }
+
     fn write_disktree(
         &self,
-        hextree: &HexTreeMap<i16, EqCompactor>,
+        hextree: &HexTreeMap<ReducedElevation>,
         progress_group: &MultiProgress,
     ) -> Result<()> {
         let disktree_file = File::create(&self.out)?;
@@ -65,41 +119,12 @@ impl Combine {
             format!("Writing {disktree_file_name}"),
             disktree_len as u64,
         ));
-        hextree.to_disktree(disktree_file, |wtr, val| {
+        hextree.to_disktree(disktree_file, |wtr, ReducedElevation { min, avg, max }| {
             pb.inc(1);
-            wtr.write_i16::<LE>(*val)
+            wtr.write_i16::<LE>(*min)
+                .and_then(|()| wtr.write_i16::<LE>(*avg))
+                .and_then(|()| wtr.write_i16::<LE>(*max))
         })?;
-        Ok(())
-    }
-
-    fn verify_disktree(
-        &self,
-        hextree: &HexTreeMap<i16, EqCompactor>,
-        progress_group: &MultiProgress,
-    ) -> Result<()> {
-        fn value_reader(res: hextree::Result<(Cell, &mut File)>) -> Result<(Cell, i16)> {
-            let (cell, rdr) = res?;
-            Ok(rdr.read_i16::<LE>().map(|val| (cell, val))?)
-        }
-
-        let mut disktree = DiskTree::open(&self.out)?;
-        let disktree_file_name = self
-            .out
-            .file_name()
-            .and_then(OsStr::to_str)
-            .expect("already opened, therefore path must be a file");
-        let pb = progress_group.add(progress::bar(
-            format!("Validating {disktree_file_name}"),
-            hextree.len() as u64,
-        ));
-        let mut count = 0;
-        for res in disktree.iter(value_reader)? {
-            let (cell, value) = res?;
-            assert_eq!(Some((cell, &value)), hextree.get(cell));
-            pb.inc(1);
-            count += 1;
-        }
-        assert_eq!(hextree.len(), count);
         Ok(())
     }
 }

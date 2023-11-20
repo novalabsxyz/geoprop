@@ -11,6 +11,8 @@ pub enum Cli {
     Combine(Combine),
 
     Lookup(Lookup),
+
+    Json(Json),
 }
 
 /// Generate a tessellated list of (cell, elevation) for each
@@ -52,8 +54,11 @@ pub struct Combine {
     #[arg(short, long)]
     pub mask: Option<PathBuf>,
 
-    #[arg(short, long, default_value_t = Resolution::Ten)]
-    pub resolution: Resolution,
+    #[arg(short, long)]
+    pub source_resolution: Resolution,
+
+    #[arg(short, long)]
+    pub target_resolution: Resolution,
 
     #[arg(short, long)]
     pub out: PathBuf,
@@ -70,4 +75,18 @@ pub struct Lookup {
     pub iter: bool,
     pub disktree: PathBuf,
     pub cell: String,
+}
+
+/// Output kepler.gl compatible JSON within the given mask.
+#[derive(Debug, Clone, Args)]
+pub struct Json {
+    #[arg(short, long)]
+    pub source_resolution: Resolution,
+
+    /// Path GeoJSON mask.
+    ///
+    /// Any samples which do not intersect the mask are ignored.
+    pub mask: PathBuf,
+
+    pub disktree: PathBuf,
 }

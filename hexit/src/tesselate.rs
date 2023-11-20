@@ -7,7 +7,7 @@ use h3o::{
     geom::{PolyfillConfig, Polygon, ToCells},
     Resolution,
 };
-use hextree::{compaction::EqCompactor, Cell, HexTreeMap};
+use hextree::{Cell, HexTreeMap};
 use indicatif::{MultiProgress, ProgressBar};
 use nasadem::{Sample, Tile};
 use rayon::prelude::*;
@@ -72,7 +72,7 @@ impl Tesselate {
             let wtr = BufWriter::new(tmp_out_wtr);
             let pb = progress_group.add(progress::bar(
                 format!("Write {out_file_name}"),
-                tile.len() as u64,
+                hextree.len() as u64,
             ));
             Self::write_to_disk(&hextree, &pb, wtr)?;
             fs::rename(out_file_tmp_path, out_file_path)?;
@@ -81,12 +81,8 @@ impl Tesselate {
         Ok(())
     }
 
-    fn tesselate_tile(
-        &self,
-        tile: &Tile,
-        progress_bar: &ProgressBar,
-    ) -> Result<HexTreeMap<i16, EqCompactor>> {
-        let mut hextree: HexTreeMap<i16, _> = HexTreeMap::with_compactor(EqCompactor);
+    fn tesselate_tile(&self, tile: &Tile, progress_bar: &ProgressBar) -> Result<HexTreeMap<i16>> {
+        let mut hextree: HexTreeMap<i16> = HexTreeMap::new();
         for sample in tile.iter() {
             let (elev, hexes) = Self::tesselate_sample(&sample, self.resolution)?;
             for hex in hexes {
@@ -110,7 +106,7 @@ impl Tesselate {
     }
 
     fn write_to_disk(
-        hextree: &HexTreeMap<i16, EqCompactor>,
+        hextree: &HexTreeMap<i16>,
         progress_bar: &ProgressBar,
         mut out: impl Write,
     ) -> Result<()> {
