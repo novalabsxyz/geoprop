@@ -147,6 +147,30 @@ where
     }
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+mod great_circle {
+    use simdeez::{avx::*, avx2::*, scalar::*, sse2::*, sse41::*, *};
+
+    simd_runtime_generate!(
+        pub fn great_circle(
+            start: Point<f32>,
+            max_step_size: f32,
+            end: Point<f32>,
+        ) -> Box<[Point<f32>]> {
+            let params = get_params(&start, &end);
+            let HaversineParams { d, .. } = params;
+            let total_distance = d * MEAN_EARTH_RADIUS as f32;
+            let number_of_points = (total_distance / max_step_size).ceil() as usize;
+            // let step_size_m = total_distance / number_of_points;
+
+            let mut out = Vec::with_capacity(number_of_points);
+            let distances = crate::math::linspace(0.0, total_distance, number_of_points);
+
+            out.into()
+        }
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::HaversineIter;

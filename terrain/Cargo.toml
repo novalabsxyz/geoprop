@@ -16,6 +16,7 @@ geo        = { workspace = true }
 log        = { workspace = true }
 nasadem    = { path = "../nasadem" }
 num-traits = { workspace = true }
+simdeez    = { workspace = true }
 thiserror  = { workspace = true }
 
 [dev-dependencies]
