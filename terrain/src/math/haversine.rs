@@ -5,7 +5,7 @@
 
 use crate::constants::MEAN_EARTH_RADIUS;
 use geo::{CoordFloat, Point};
-use num_traits::{AsPrimitive, Float, FloatConst, FromPrimitive};
+use num_traits::{AsPrimitive, FromPrimitive};
 
 pub struct HaversineIter<T: CoordFloat = f32> {
     params: HaversineParams<T>,
@@ -147,38 +147,9 @@ where
     }
 }
 
-/// Returns the up/down angle (in radians) from a to b.
-pub fn elevation_angle<T>(start_elev_m: T, distance_m: T, end_elev_m: T, earth_radius: T) -> T
-where
-    T: Float + FloatConst,
-{
-    let a = distance_m;
-    let b = start_elev_m + earth_radius;
-    let c = end_elev_m + earth_radius;
-    let inner = {
-        let inner = (a.powi(2) + b.powi(2) - c.powi(2)) / ((T::one() + T::one()) * a * b);
-        if inner < -T::one() {
-            -T::one()
-        } else if inner > T::one() {
-            T::one()
-        } else {
-            inner
-        }
-    };
-    inner.acos() - T::FRAC_PI_2()
-}
-
-pub fn linspace<T>(y_start: T, y_end: T, n: usize) -> impl Iterator<Item = T>
-where
-    T: Float + FromPrimitive,
-{
-    let dy = (y_end - y_start) / T::from(n - 1).unwrap();
-    (0..n).map(move |x| y_start + T::from(x).unwrap() * dy)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{elevation_angle, HaversineIter};
+    use super::HaversineIter;
     use approx::assert_relative_eq;
     use geo::point;
 
@@ -204,14 +175,5 @@ mod tests {
             point!(x: 0.5, y: 0.5),
         ];
         assert_eq!(points, expected);
-    }
-
-    #[test]
-    fn test_elevation_angle() {
-        assert_relative_eq!(
-            0.100_167_342_359_641_42,
-            elevation_angle(1.0, 1.0, 1.1, super::MEAN_EARTH_RADIUS),
-            epsilon = f64::EPSILON
-        );
     }
 }
