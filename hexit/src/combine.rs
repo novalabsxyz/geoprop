@@ -1,5 +1,5 @@
 use crate::{
-    elevation::{Elevation, ReducedElevation, ReductionCompactor},
+    elevation::{CloseEnoughCompactor, Elevation, ReducedElevation},
     options::Combine,
     progress,
 };
@@ -13,16 +13,15 @@ use std::{ffi::OsStr, fs::File, io::BufReader, path::Path};
 impl Combine {
     pub fn run(&self) -> Result<()> {
         assert!(!self.input.is_empty());
-        let mut hextree: HexTreeMap<Elevation, ReductionCompactor> =
-            HexTreeMap::with_compactor(ReductionCompactor {
-                source_resolution: self.source_resolution as u8,
-                target_resolution: self.target_resolution as u8,
+        let mut hextree: HexTreeMap<Elevation, CloseEnoughCompactor> =
+            HexTreeMap::with_compactor(CloseEnoughCompactor {
+                tolerance: self.tolerance,
             });
         let progress_group = MultiProgress::new();
         for tess_file_path in &self.input {
             Self::read_tessellation(tess_file_path, &progress_group, &mut hextree)?;
         }
-        let hextree = self.reduce_hextree(&hextree, &progress_group);
+        let hextree = Self::reduce_hextree(&hextree, &progress_group);
         self.write_disktree(&hextree, &progress_group)?;
         Ok(())
     }
@@ -30,7 +29,7 @@ impl Combine {
     fn read_tessellation(
         tess_file_path: &Path,
         progress_group: &MultiProgress,
-        hextree: &mut HexTreeMap<Elevation, ReductionCompactor>,
+        hextree: &mut HexTreeMap<Elevation, CloseEnoughCompactor>,
     ) -> Result<()> {
         let tess_file = File::open(tess_file_path)?;
         let tess_buf_rdr = BufReader::new(tess_file);
@@ -59,22 +58,12 @@ impl Combine {
     }
 
     fn reduce_hextree(
-        &self,
-        hextree: &HexTreeMap<Elevation, ReductionCompactor>,
+        hextree: &HexTreeMap<Elevation, CloseEnoughCompactor>,
         _progress_group: &MultiProgress,
     ) -> HexTreeMap<ReducedElevation> {
         let mut reduced_hextree = HexTreeMap::new();
-        let max_child_cnt =
-            7_usize.pow(self.source_resolution as u32 - self.target_resolution as u32);
         for (cell, elev) in hextree.iter() {
-            match elev {
-                elevation if cell.res() == self.target_resolution as u8 => {
-                    assert_eq!(elevation.n, max_child_cnt);
-                    let reduction = elevation.reduce();
-                    reduced_hextree.insert(cell, reduction);
-                }
-                _ => {}
-            };
+            reduced_hextree.insert(cell, elev.reduce());
         }
         reduced_hextree
     }

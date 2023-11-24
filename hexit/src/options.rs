@@ -48,17 +48,8 @@ pub struct Tesselate {
 /// Combine previously tesselated files into a single
 #[derive(Debug, Clone, Args)]
 pub struct Combine {
-    /// Path GeoJSON mask.
-    ///
-    /// Any samples which do not intersect the mask are ignored.
     #[arg(short, long)]
-    pub mask: Option<PathBuf>,
-
-    #[arg(short, long)]
-    pub source_resolution: Resolution,
-
-    #[arg(short, long)]
-    pub target_resolution: Resolution,
+    pub tolerance: i16,
 
     #[arg(short, long)]
     pub out: PathBuf,

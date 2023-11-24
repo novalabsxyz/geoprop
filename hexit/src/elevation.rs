@@ -87,3 +87,40 @@ impl Compactor<Elevation> for ReductionCompactor {
         }
     }
 }
+
+pub struct CloseEnoughCompactor {
+    // Maximum differance between min and max child elevations
+    // allowable for a cell to be coalesced.
+    pub tolerance: i16,
+}
+
+impl Compactor<Elevation> for CloseEnoughCompactor {
+    fn compact(&mut self, _cell: Cell, children: [Option<&Elevation>; 7]) -> Option<Elevation> {
+        if let [Some(v0), Some(v1), Some(v2), Some(v3), Some(v4), Some(v5), Some(v6)] = children {
+            let mut n_min = i16::MAX;
+            let mut n_sum = 0;
+            let mut n_max = i16::MIN;
+            let mut n_n = 0;
+            for Elevation { min, sum, max, n } in [v0, v1, v2, v3, v4, v5, v6] {
+                n_min = i16::min(n_min, *min);
+                n_sum += sum;
+                n_max = i16::max(n_max, *max);
+                n_n += n;
+            }
+            let error = n_max - n_min;
+            assert!(error >= 0, "error can't be negative");
+            if error <= self.tolerance {
+                Some(Elevation {
+                    min: n_min,
+                    sum: n_sum,
+                    max: n_max,
+                    n: n_n,
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
