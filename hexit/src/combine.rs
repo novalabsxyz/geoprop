@@ -45,8 +45,9 @@ impl Combine {
         for _sample_n in 0..n_samples {
             let raw_cell = rdr.read_u64::<LE>()?;
             let cell = hextree::Cell::from_raw(raw_cell)?;
-            let elevation = rdr.read_i16::<LE>()?;
-            hextree.insert(cell, Elevation::Plain(elevation));
+            let raw_elevation = rdr.read_i16::<LE>()?;
+            let elevation = Elevation::new(raw_elevation);
+            hextree.insert(cell, elevation);
             pb.inc(1);
         }
         assert!(
@@ -67,11 +68,9 @@ impl Combine {
             7_usize.pow(self.source_resolution as u32 - self.target_resolution as u32);
         for (cell, elev) in hextree.iter() {
             match elev {
-                Elevation::Intermediate(intermediate)
-                    if cell.res() == self.target_resolution as u8 =>
-                {
-                    assert_eq!(intermediate.n, max_child_cnt);
-                    let reduction = intermediate.reduce();
+                elevation if cell.res() == self.target_resolution as u8 => {
+                    assert_eq!(elevation.n, max_child_cnt);
+                    let reduction = elevation.reduce();
                     reduced_hextree.insert(cell, reduction);
                 }
                 _ => {}

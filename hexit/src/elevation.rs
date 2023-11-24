@@ -23,61 +23,49 @@ impl ReducedElevation {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct IntermediateElevation {
+pub struct Elevation {
     pub min: i16,
     pub sum: i32,
     pub max: i16,
     pub n: usize,
 }
 
-impl IntermediateElevation {
+impl Elevation {
+    pub fn new(raw: i16) -> Elevation {
+        Elevation {
+            min: raw,
+            sum: i32::from(raw),
+            max: raw,
+            n: 1,
+        }
+    }
+
     pub fn reduce(&self) -> ReducedElevation {
         let min = self.min;
         let avg = i16::try_from(self.sum / i32::try_from(self.n).unwrap()).unwrap();
         let max = self.max;
+        assert_ne!(min, i16::MIN);
+        assert_ne!(min, i16::MAX);
+        assert_ne!(max, i16::MIN);
+        assert_ne!(max, i16::MAX);
         assert!(min <= avg && avg <= max);
         ReducedElevation { min, avg, max }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Elevation {
-    Plain(i16),
-    Intermediate(IntermediateElevation),
-}
-
 impl Elevation {
-    pub fn concat(source_resolution: u8, this_resolution: u8, items: &[Self]) -> Self {
-        let mut new_min = i16::MAX;
-        let mut new_sum: i32 = 0;
-        let mut new_max = i16::MIN;
-        let mut new_n = 0_usize;
+    pub fn concat(items: &[Self]) -> Self {
+        let mut min = i16::MAX;
+        let mut sum: i32 = 0;
+        let mut max = i16::MIN;
+        let mut n = 0_usize;
         for item in items {
-            match item {
-                Elevation::Plain(elev) => {
-                    let n = 7_usize.pow(u32::from(source_resolution - this_resolution - 1));
-                    assert_ne!(n, 0);
-                    let sum = i32::from(*elev) * i32::try_from(n).unwrap();
-                    new_sum += sum;
-                    new_min = i16::min(new_min, *elev);
-                    new_max = i16::max(new_max, *elev);
-                    new_n += n;
-                }
-
-                Elevation::Intermediate(IntermediateElevation { min, sum, max, n }) => {
-                    new_sum += *sum;
-                    new_min = i16::min(new_min, *min);
-                    new_max = i16::max(new_max, *max);
-                    new_n += n;
-                }
-            }
+            sum += item.sum;
+            min = i16::min(min, item.min);
+            max = i16::max(max, item.max);
+            n += item.n;
         }
-        Elevation::Intermediate(IntermediateElevation {
-            min: new_min,
-            sum: new_sum,
-            max: new_max,
-            n: new_n,
-        })
+        Elevation { min, sum, max, n }
     }
 }
 
@@ -93,11 +81,7 @@ impl Compactor<Elevation> for ReductionCompactor {
         } else if let [Some(v0), Some(v1), Some(v2), Some(v3), Some(v4), Some(v5), Some(v6)] =
             children
         {
-            Some(Elevation::concat(
-                self.source_resolution,
-                cell.res(),
-                &[*v0, *v1, *v2, *v3, *v4, *v5, *v6],
-            ))
+            Some(Elevation::concat(&[*v0, *v1, *v2, *v3, *v4, *v5, *v6]))
         } else {
             None
         }
