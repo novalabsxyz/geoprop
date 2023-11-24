@@ -1,37 +1,14 @@
 use crate::{
-    elevation::{Elevation, ReducedElevation},
+    elevation::{Elevation, ReducedElevation, ReductionCompactor},
     options::Combine,
     progress,
 };
 use anyhow::Result;
 use byteorder::{LittleEndian as LE, ReadBytesExt, WriteBytesExt};
 use flate2::bufread::GzDecoder;
-use hextree::{compaction::Compactor, Cell, HexTreeMap};
+use hextree::HexTreeMap;
 use indicatif::MultiProgress;
 use std::{ffi::OsStr, fs::File, io::BufReader, path::Path};
-
-struct ReductionCompactor {
-    target_resolution: u8,
-    source_resolution: u8,
-}
-
-impl Compactor<Elevation> for ReductionCompactor {
-    fn compact(&mut self, cell: Cell, children: [Option<&Elevation>; 7]) -> Option<Elevation> {
-        if cell.res() < self.target_resolution {
-            None
-        } else if let [Some(v0), Some(v1), Some(v2), Some(v3), Some(v4), Some(v5), Some(v6)] =
-            children
-        {
-            Some(Elevation::concat(
-                self.source_resolution,
-                cell.res(),
-                &[*v0, *v1, *v2, *v3, *v4, *v5, *v6],
-            ))
-        } else {
-            None
-        }
-    }
-}
 
 impl Combine {
     pub fn run(&self) -> Result<()> {
