@@ -14,7 +14,7 @@ impl Json {
     pub fn run(&self) -> Result<()> {
         let mut disktree = DiskTree::open(&self.disktree)?;
         let mask = mask::open(Some(&self.mask))?.unwrap();
-        let target_cells = Self::polyfill_mask(mask, self.source_resolution)?;
+        let target_cells = Self::polyfill_mask(mask, self.resolution)?;
         let mut hextree = HexTreeMap::new();
         for h3idx in target_cells {
             let cell = Cell::try_from(h3idx)?;

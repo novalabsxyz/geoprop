@@ -71,8 +71,9 @@ pub struct Lookup {
 /// Output kepler.gl compatible JSON within the given mask.
 #[derive(Debug, Clone, Args)]
 pub struct Json {
+    /// Source resolution.
     #[arg(short, long)]
-    pub source_resolution: Resolution,
+    pub resolution: Resolution,
 
     /// Path GeoJSON mask.
     ///

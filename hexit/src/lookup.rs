@@ -22,7 +22,6 @@ impl Lookup {
             Some((cell, rdr)) => {
                 let t_seek = t0.elapsed();
                 let ReducedElevation { min, avg, max } = ReducedElevation::from_reader(rdr)?;
-                let t_tot = t0.elapsed();
                 println!("cell: {cell} (res {})", cell.res());
                 println!("min:  {min}");
                 println!("avg:  {avg}");
