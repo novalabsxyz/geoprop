@@ -1,4 +1,4 @@
-use crate::{elevation::ReducedElevation, options::Lookup};
+use crate::{elevation::Elevation, options::Lookup};
 use anyhow::Result;
 use hextree::{disktree::DiskTree, Cell};
 use std::fs::File;
@@ -21,11 +21,13 @@ impl Lookup {
             None => (),
             Some((cell, rdr)) => {
                 let t_seek = t0.elapsed();
-                let ReducedElevation { min, avg, max } = ReducedElevation::from_reader(rdr)?;
+                let Elevation { min, max, sum, n } = Elevation::from_reader(rdr)?;
+                let avg = sum / n;
                 println!("cell: {cell} (res {})", cell.res());
                 println!("min:  {min}");
                 println!("avg:  {avg}");
                 println!("max:  {max}");
+                println!("n:    {n}");
                 println!("seek: {t_seek:?}");
             }
         }

@@ -1,4 +1,4 @@
-use crate::{elevation::ReducedElevation, mask, options::Json};
+use crate::{elevation::Elevation, mask, options::Json};
 use anyhow::Result;
 use geo::geometry::GeometryCollection;
 use h3o::{
@@ -7,7 +7,7 @@ use h3o::{
 };
 use hextree::{disktree::DiskTree, Cell, HexTreeMap};
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::fs::File;
 
 impl Json {
@@ -22,7 +22,7 @@ impl Json {
                 hextree.insert(cell, reduction);
             }
         }
-        let json = Self::gen_json(&hextree);
+        let json = Self::gen_json(&hextree)?;
         Self::output_json(&json)?;
         Ok(())
     }
@@ -38,40 +38,48 @@ impl Json {
         Ok(cells)
     }
 
-    fn get(cell: Cell, disktree: &mut DiskTree<File>) -> Result<Option<(Cell, ReducedElevation)>> {
+    fn get(cell: Cell, disktree: &mut DiskTree<File>) -> Result<Option<(Cell, Elevation)>> {
         match disktree.seek_to_cell(cell)? {
             None => Ok(None),
             Some((cell, rdr)) => {
-                let reduction = ReducedElevation::from_reader(rdr)?;
+                let reduction = Elevation::from_reader(rdr)?;
                 Ok(Some((cell, reduction)))
             }
         }
     }
 
-    fn gen_json(hextree: &HexTreeMap<ReducedElevation>) -> Value {
+    fn gen_json(hextree: &HexTreeMap<Elevation>) -> Result<Value> {
         #[derive(Serialize)]
         struct JsonEntry {
             h3_id: String,
             min: i16,
             avg: i16,
+            sum: i32,
             max: i16,
+            n: i32,
         }
-        impl From<(Cell, &ReducedElevation)> for JsonEntry {
-            fn from((cell, reduction): (Cell, &ReducedElevation)) -> JsonEntry {
+        impl From<(Cell, &Elevation)> for JsonEntry {
+            fn from((cell, elev): (Cell, &Elevation)) -> JsonEntry {
                 JsonEntry {
+                    avg: i16::try_from(elev.sum / elev.n).unwrap(),
                     h3_id: cell.to_string(),
-                    min: reduction.min,
-                    avg: reduction.avg,
-                    max: reduction.max,
+                    max: elev.max,
+                    min: elev.min,
+                    n: elev.n,
+                    sum: elev.sum,
                 }
             }
         }
-        let samples = hextree.iter().map(JsonEntry::from).collect::<Vec<_>>();
-        json!(samples)
+        let samples = hextree
+            .iter()
+            .map(JsonEntry::from)
+            .map(serde_json::to_value)
+            .collect::<Result<Vec<Value>, _>>()?;
+        Ok(Value::Array(samples))
     }
 
     fn output_json(json: &Value) -> Result<()> {
-        let out = std::io::stdout();
+        let out = std::io::stdout().lock();
         serde_json::to_writer(out, json)?;
         Ok(())
     }

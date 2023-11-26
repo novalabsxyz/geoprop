@@ -1,10 +1,10 @@
 use crate::{
-    elevation::{CloseEnoughCompactor, Elevation, ReducedElevation},
+    elevation::{CloseEnoughCompactor, Elevation},
     options::Combine,
     progress,
 };
 use anyhow::Result;
-use byteorder::{LittleEndian as LE, ReadBytesExt, WriteBytesExt};
+use byteorder::{LittleEndian as LE, ReadBytesExt};
 use flate2::bufread::GzDecoder;
 use hextree::HexTreeMap;
 use indicatif::MultiProgress;
@@ -21,7 +21,6 @@ impl Combine {
         for tess_file_path in &self.input {
             Self::read_tessellation(tess_file_path, &progress_group, &mut hextree)?;
         }
-        let hextree = Self::reduce_hextree(&hextree, &progress_group);
         self.write_disktree(&hextree, &progress_group)?;
         Ok(())
     }
@@ -57,20 +56,9 @@ impl Combine {
         Ok(())
     }
 
-    fn reduce_hextree(
-        hextree: &HexTreeMap<Elevation, CloseEnoughCompactor>,
-        _progress_group: &MultiProgress,
-    ) -> HexTreeMap<ReducedElevation> {
-        let mut reduced_hextree = HexTreeMap::new();
-        for (cell, elev) in hextree.iter() {
-            reduced_hextree.insert(cell, elev.reduce());
-        }
-        reduced_hextree
-    }
-
     fn write_disktree(
         &self,
-        hextree: &HexTreeMap<ReducedElevation>,
+        hextree: &HexTreeMap<Elevation, CloseEnoughCompactor>,
         progress_group: &MultiProgress,
     ) -> Result<()> {
         let disktree_file = File::create(&self.out)?;
@@ -84,11 +72,9 @@ impl Combine {
             format!("Writing {disktree_file_name}"),
             disktree_len as u64,
         ));
-        hextree.to_disktree(disktree_file, |wtr, ReducedElevation { min, avg, max }| {
+        hextree.to_disktree(disktree_file, |wtr, elev| {
             pb.inc(1);
-            wtr.write_i16::<LE>(*min)
-                .and_then(|()| wtr.write_i16::<LE>(*avg))
-                .and_then(|()| wtr.write_i16::<LE>(*max))
+            elev.to_writer(wtr)
         })?;
         Ok(())
     }
