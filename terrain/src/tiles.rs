@@ -121,12 +121,12 @@ fn sw_corner(Coord { x, y }: Coord<C>) -> Coord<i16> {
 fn file_name(Coord { x, y }: Coord<i16>) -> String {
     let (n_s, lat) = {
         let lat = y.abs();
-        let n_s = if y.is_positive() { 'N' } else { 'S' };
+        let n_s = if y.is_negative() { 'S' } else { 'N' };
         (n_s, lat)
     };
     let (e_w, lon) = {
         let lon = x.abs();
-        let e_w = if x.is_positive() { 'E' } else { 'W' };
+        let e_w = if x.is_negative() { 'W' } else { 'E' };
         (e_w, lon)
     };
     format!("{n_s}{lat:02}{e_w}{lon:03}.hgt")
@@ -160,8 +160,28 @@ mod tests {
 
     #[test]
     fn test_file_name() {
-        let sw_corner = sw_corner(MT_WASHINGTON);
-        let actual = file_name(sw_corner);
-        assert_eq!(actual, "N44W072.hgt");
+        let name = file_name(sw_corner(Coord {
+            y: 0.0 + f64::EPSILON,
+            x: 0.0 + f64::EPSILON,
+        }));
+        assert_eq!(name, "N00E000.hgt");
+
+        let name = file_name(sw_corner(Coord {
+            y: 0.0 + f64::EPSILON,
+            x: 0.0 - f64::EPSILON,
+        }));
+        assert_eq!(name, "N00W001.hgt");
+
+        let name = file_name(sw_corner(Coord {
+            y: 0.0 - f64::EPSILON,
+            x: 0.0 - f64::EPSILON,
+        }));
+        assert_eq!(name, "S01W001.hgt");
+
+        let name = file_name(sw_corner(Coord {
+            y: 0.0 - f64::EPSILON,
+            x: 0.0 + f64::EPSILON,
+        }));
+        assert_eq!(name, "S01E000.hgt");
     }
 }
