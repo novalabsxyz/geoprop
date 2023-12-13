@@ -76,8 +76,15 @@ impl Tiles {
 /// Private API.
 impl Tiles {
     fn load_tile(&self, sw_corner: Coord<i16>) -> Result<Tile, TerrainError> {
-        let file_name = file_name(sw_corner);
-        let tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
+        let tile_path = {
+            let file_name = file_name(sw_corner);
+            let mut tile_path: PathBuf = [&self.tile_dir, Path::new(&file_name)].iter().collect();
+            if !tile_path.exists() {
+                let file_name = file_name.to_lowercase();
+                tile_path = [&self.tile_dir, Path::new(&file_name)].iter().collect();
+            }
+            tile_path
+        };
         debug!("loading {tile_path:?}");
         match self.tile_mode {
             TileMode::InMem => Ok(Tile::load(tile_path)?),
