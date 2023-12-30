@@ -8,7 +8,7 @@ use h3o::{
     Resolution,
 };
 use hextree::{Cell, HexTreeMap};
-use indicatif::{MultiProgress, ProgressBar};
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget};
 use nasadem::{Sample, Tile};
 use rayon::prelude::*;
 use std::{
@@ -20,7 +20,7 @@ use std::{
 
 impl Tesselate {
     pub fn run(&self) -> Result<()> {
-        let progress_group = MultiProgress::new();
+        let progress_group = MultiProgress::with_draw_target(ProgressDrawTarget::stderr_with_hz(4));
         let mask = mask::open(self.mask.as_deref())?;
         self.input.par_iter().try_for_each(|height_file_path| {
             self._run(height_file_path, mask.as_ref(), &progress_group)
