@@ -1,7 +1,6 @@
 use crate::{elevation::Elevation, options::Lookup};
 use anyhow::Result;
-use hextree::{disktree::DiskTree, Cell};
-use std::fs::File;
+use hextree::{disktree::DiskTreeMap, memmap::Mmap, Cell};
 
 impl Lookup {
     pub fn run(&self) -> Result<()> {
@@ -10,18 +9,18 @@ impl Lookup {
             .parse::<u64>()
             .or_else(|_| u64::from_str_radix(&self.cell, 16))?;
         let cell = Cell::try_from(raw_cell)?;
-        let mut disktree = DiskTree::open(&self.disktree)?;
+        let mut disktree = DiskTreeMap::open(&self.disktree)?;
 
         Self::by_get(cell, &mut disktree)
     }
 
-    fn by_get(cell: Cell, disktree: &mut DiskTree<File>) -> Result<()> {
+    fn by_get(cell: Cell, disktree: &mut DiskTreeMap<Mmap>) -> Result<()> {
         let t0 = std::time::Instant::now();
-        match disktree.seek_to_cell(cell)? {
+        match disktree.get(cell)? {
             None => (),
-            Some((cell, rdr)) => {
+            Some((cell, bytes)) => {
                 let t_seek = t0.elapsed();
-                let Elevation { min, max, sum, n } = Elevation::from_reader(rdr)?;
+                let Elevation { min, max, sum, n } = Elevation::from_reader(&mut &bytes[..])?;
                 let avg = sum / n;
                 println!("cell: {cell} (res {})", cell.res());
                 println!("min:  {min}");

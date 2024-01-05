@@ -5,20 +5,19 @@ use h3o::{
     geom::{PolyfillConfig, ToCells},
     Resolution,
 };
-use hextree::{disktree::DiskTree, Cell, HexTreeMap};
+use hextree::{disktree::DiskTreeMap, memmap::Mmap, Cell, HexTreeMap};
 use serde::Serialize;
 use serde_json::Value;
-use std::fs::File;
 
 impl Json {
     pub fn run(&self) -> Result<()> {
-        let mut disktree = DiskTree::open(&self.disktree)?;
+        let disktree = DiskTreeMap::open(&self.disktree)?;
         let mask = mask::open(Some(&self.mask))?.unwrap();
         let target_cells = Self::polyfill_mask(mask, self.resolution)?;
         let mut hextree = HexTreeMap::new();
         for h3idx in target_cells {
             let cell = Cell::try_from(h3idx)?;
-            if let Some((cell, reduction)) = Self::get(cell, &mut disktree)? {
+            if let Some((cell, reduction)) = Self::get(cell, &disktree)? {
                 hextree.insert(cell, reduction);
             }
         }
@@ -38,11 +37,11 @@ impl Json {
         Ok(cells)
     }
 
-    fn get(cell: Cell, disktree: &mut DiskTree<File>) -> Result<Option<(Cell, Elevation)>> {
-        match disktree.seek_to_cell(cell)? {
+    fn get(cell: Cell, disktree: &DiskTreeMap<Mmap>) -> Result<Option<(Cell, Elevation)>> {
+        match disktree.get(cell)? {
             None => Ok(None),
-            Some((cell, rdr)) => {
-                let reduction = Elevation::from_reader(rdr)?;
+            Some((cell, bytes)) => {
+                let reduction = Elevation::from_reader(&mut &bytes[..])?;
                 Ok(Some((cell, reduction)))
             }
         }
