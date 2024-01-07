@@ -101,6 +101,10 @@ impl Compactor<Elevation> for CloseEnoughCompactor {
             let mut n_max = i16::MIN;
             let mut n_n = 0;
             for Elevation { min, sum, max, n } in [v0, v1, v2, v3, v4, v5, v6] {
+                // HACK: Ignore voids that snuck through.
+                if [min, max].contains(&&i16::MIN) {
+                    continue;
+                }
                 n_min = i16::min(n_min, *min);
                 n_sum += sum;
                 n_max = i16::max(n_max, *max);

@@ -84,6 +84,7 @@ impl Tesselate {
     fn tesselate_tile(&self, tile: &Tile, progress_bar: &ProgressBar) -> Result<HexTreeMap<i16>> {
         let mut hextree: HexTreeMap<i16> = HexTreeMap::new();
         for sample in tile.iter() {
+            assert_ne!(sample.elevation(), i16::MIN);
             let (elev, hexes) = Self::tesselate_sample(&sample, self.resolution)?;
             for hex in hexes {
                 hextree.insert(Cell::try_from(hex)?, elev);
