@@ -281,7 +281,7 @@ impl Tile {
         self.samples.get_unchecked(idx_1d)
     }
 
-    /// Returns and iterator over `self`'s grid squares.
+    /// Returns an iterator over `self`'s grid squares.
     pub fn iter(&self) -> impl Iterator<Item = Sample<'_>> + '_ {
         (0..(self.dimensions.0 * self.dimensions.1)).map(|index| Sample { tile: self, index })
     }
