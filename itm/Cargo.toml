@@ -27,7 +27,11 @@ cxx-build = "1"
 anyhow  = "1"
 clap    = { workspace = true }
 geo     = { workspace = true }
+rayon   = "1"
 terrain = { path = "../terrain" }
 
 [[example]]
 name = "p2p"
+
+[[example]]
+name = "path"
